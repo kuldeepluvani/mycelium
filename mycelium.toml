@@ -1,0 +1,74 @@
+[mycelium]
+data_dir = "data"  # Relative to mycelium.toml location; absolute paths also supported
+
+[nats]
+url = "nats://localhost:4222"
+stream_prefix = "mycelium"
+max_pending = 1024
+
+[connectors.vault]
+enabled = true
+path = "/Users/kuldeep.luvani/Documents/my_org/Obsidian/Zefr/Zefr"
+extensions = [".md"]
+ignore_patterns = [".obsidian/*", ".trash/*"]
+
+[connectors.git]
+enabled = true
+base_path = "/Users/kuldeep.luvani/Documents/zefr_work/Github"
+include_repos = []
+exclude_repos = ["node_modules", "__pycache__", "delete_me", "delete-me"]
+extract_commits = true
+extract_readme = true
+extract_structure = true
+commit_lookback_days = 30
+max_repos_per_cycle = 10
+
+[perception]
+max_concurrent_pipelines = 3
+max_concurrent_cli_calls = 3
+batch_size_relationships = 15
+batch_size_resolution = 10
+chunk_size = 3000
+chunk_overlap = 500
+quarantine_threshold = 0.4
+challenge_skip_anchor_ratio = 0.8
+anomaly_entity_limit = 50
+anomaly_edge_limit = 100
+
+[brainstem]
+db_path = "data/brainstem.db"
+embeddings_path = "data/embeddings.faiss"
+embedding_model = "local"
+
+[brainstem.decay]
+structural = 0.02
+causal = 0.05
+semantic = 0.10
+temporal = 0.15
+prune_threshold = 0.1
+tombstone_threshold = 0.05
+archive_after_cycles = 10
+
+[network]
+min_cluster_size = 10
+min_coherence = 0.3
+max_inter_density = 0.15
+stability_cycles = 2
+spillover_edge_threshold = 5
+min_graph_nodes_for_discovery = 50
+
+[serve]
+host = "127.0.0.1"
+port = 8000
+max_agents_per_query = 3
+subgraph_hops = 3
+
+[observe]
+db_path = "data/observation.db"
+health_retention_days = 30
+event_retention_days = -1
+auto_vacuum_threshold_mb = 500
+
+[quota]
+default_budget = 50
+presets = { quick = 20, standard = 50, deep = 100 }
