@@ -73,11 +73,14 @@ mycelium.system.>             # ErrorOccurred, HealthCheck
 # Connector events
 DocumentIngested(source, path, content_hash, timestamp)
 DocumentChanged(source, path, diff_summary, timestamp)
+DocumentDeleted(source, path, orphaned_entity_ids: list[str])
 
 # Perception events
 EntitiesExtracted(node_id, entities: list[Entity], call_cost: int)
 RelationshipBuilt(source_id, target_id, rel_type, rationale, confidence)
 ConceptFormed(concept_id, member_nodes, label, description)
+EntityMerged(source_id, target_id, surviving_id, merge_reason)
+DataQuarantined(entity_ids: list[str], reason: str, layer: int)
 
 # Graph events
 GraphUpdated(node_ids: list[str], edge_count_delta: int)
@@ -315,11 +318,11 @@ Growth:      each cycle that re-confirms
 
 Decay:       each cycle that does NOT re-encounter
              confidence *= (1 - decay_rate)
-             Rates by relationship type:
-               DEPENDS_ON:   0.02/cycle (slow)
-               CAUSED:       0.05/cycle (medium)
-               RELATED_TO:   0.10/cycle (fast)
-               TEMPORAL:     0.15/cycle (fastest)
+             Default rates by rel_category:
+               structural:   0.02/cycle (slow — dependencies, ownership)
+               causal:       0.05/cycle (medium — cause/effect)
+               semantic:     0.10/cycle (fast — weak associations)
+               temporal:     0.15/cycle (fastest — time-bound facts)
 
 Pruning:     confidence < 0.1  -> archived (cold store)
              confidence < 0.05 -> tombstoned (record kept)
@@ -394,10 +397,10 @@ Spillover types:
 ### Modes
 
 - **IDLE** — Default. No activity.
-- **LEARN** — Active enrichment cycle. Budget-aware.
-- **SERVE** — Query mode. API + WebSocket active.
+- **LEARN** — Active enrichment cycle. Budget-aware. Serve operates in read-only mode during learn (queries use graph snapshot from cycle start).
+- **SERVE** — Query mode. API + WebSocket active. Full read-write feedback loop.
 
-Modes are mutually exclusive. Serve and learn cannot run simultaneously.
+Serve and Learn can co-exist: during learn, serve runs read-only against a graph snapshot taken at cycle start. SQLite WAL mode supports concurrent readers with a single writer. NetworkX graph is snapshotted (shallow copy) at learn cycle start for serve queries. Feedback loop confidence adjustments are queued and applied after learn cycle completes.
 
 ### Priority Queue
 
@@ -581,7 +584,9 @@ CREATE TABLE relationships (
     decay_rate REAL NOT NULL DEFAULT 0.05,
     version INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL,
-    last_validated TEXT
+    last_validated TEXT,
+    quarantined INTEGER NOT NULL DEFAULT 0,
+    archived INTEGER NOT NULL DEFAULT 0
 );
 
 -- Documents
@@ -603,7 +608,7 @@ CREATE TABLE agents (
     domain TEXT NOT NULL,
     description TEXT,
     seed_nodes TEXT,
-    status TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('candidate', 'active', 'mature', 'retired')),
     queries_answered INTEGER DEFAULT 0,
     avg_confidence REAL DEFAULT 0.0,
     discovered_at TEXT NOT NULL,
@@ -611,15 +616,40 @@ CREATE TABLE agents (
     pinned INTEGER NOT NULL DEFAULT 0
 );
 
--- Concepts
+-- Agent-Node membership (evolving, updated each cycle)
+CREATE TABLE agent_nodes (
+    agent_id TEXT NOT NULL REFERENCES agents(id),
+    entity_id TEXT NOT NULL REFERENCES entities(id),
+    cycle_assigned INTEGER NOT NULL,
+    PRIMARY KEY (agent_id, entity_id)
+);
+
+-- Concepts (also stored as entities with entity_class='concept' for graph traversal)
 CREATE TABLE concepts (
     id TEXT PRIMARY KEY,
+    entity_id TEXT NOT NULL REFERENCES entities(id),  -- corresponding graph node
     label TEXT NOT NULL,
     description TEXT,
     member_entities TEXT,
     confidence REAL NOT NULL DEFAULT 0.5,
     formed_at TEXT NOT NULL,
     version INTEGER NOT NULL DEFAULT 1
+);
+
+-- Document chunks (for provenance tracking on large documents)
+CREATE TABLE document_chunks (
+    id TEXT PRIMARY KEY,
+    document_id TEXT NOT NULL REFERENCES documents(id),
+    chunk_index INTEGER NOT NULL,
+    start_offset INTEGER NOT NULL,
+    end_offset INTEGER NOT NULL,
+    content_hash TEXT NOT NULL
+);
+
+-- Schema version (for migrations)
+CREATE TABLE schema_version (
+    version INTEGER NOT NULL,
+    applied_at TEXT NOT NULL
 );
 
 -- Staging (perception pipeline intermediate results)
@@ -642,6 +672,11 @@ CREATE INDEX idx_relationships_type ON relationships(rel_type);
 CREATE INDEX idx_documents_source ON documents(source);
 CREATE INDEX idx_documents_hash ON documents(content_hash);
 CREATE INDEX idx_agents_status ON agents(status);
+CREATE INDEX idx_entities_name ON entities(name);
+CREATE INDEX idx_entities_canonical ON entities(canonical_name);
+CREATE INDEX idx_agent_nodes_agent ON agent_nodes(agent_id);
+CREATE INDEX idx_agent_nodes_entity ON agent_nodes(entity_id);
+CREATE INDEX idx_document_chunks_doc ON document_chunks(document_id);
 ```
 
 ### observation.db
@@ -754,9 +789,9 @@ embeddings_path = "data/embeddings.faiss"
 embedding_model = "local"
 
 [brainstem.decay]
-depends_on = 0.02
-caused = 0.05
-related_to = 0.10
+structural = 0.02
+causal = 0.05
+semantic = 0.10
 temporal = 0.15
 prune_threshold = 0.1
 tombstone_threshold = 0.05
@@ -771,7 +806,7 @@ spillover_edge_threshold = 5
 min_graph_nodes_for_discovery = 50
 
 [serve]
-host = "0.0.0.0"
+host = "127.0.0.1"
 port = 8000
 max_agents_per_query = 3
 subgraph_hops = 3
@@ -872,7 +907,11 @@ mycelium/
       llm.py                     # Claude CLI wrapper
       models.py                  # Core dataclasses
       config.py                  # TOML config loader
-      process_guard.py           # Single instance guard
+      process_guard.py           # Single instance guard (PID file + signal handling)
+
+    migrations/                    # SQLite schema migrations
+      __init__.py
+      001_initial.py
 
   data/
     .gitkeep
@@ -932,18 +971,36 @@ mycelium agents split X --by tag       # Split agent
 mycelium agents rename X "New Name"    # Rename
 mycelium agents pin "Name"             # Prevent retirement
 mycelium agents create --seed "a,b,c"  # Manual agent
+mycelium backup                        # Atomic snapshot of all data
+mycelium export --format json          # Export graph as JSON
+mycelium rebuild-embeddings            # Re-embed all entities (after model change)
 ```
 
 ---
 
 ## 14. Cold Start & First-Run
 
+### NATS Lifecycle
+
+NATS runs as a launchd user agent (macOS) or systemd service (Linux), not as a child process of Mycelium. `mycelium init` installs the service. This ensures JetStream durability survives Mycelium crashes.
+
+```bash
+mycelium init  # installs nats-server as launchd agent, verifies connectivity
+```
+
+If NATS is unresponsive, modules detect via health check (5s ping interval) and publish `ErrorOccurred` locally (stderr + file log fallback). Orchestrator pauses learn cycle until NATS recovers.
+
+### First-Run Behavior
+
 On first `mycelium learn`:
-1. NATS auto-started as managed subprocess
+1. NATS verified running (launchd agent)
 2. Empty FAISS index — entity resolver uses name/alias only
 3. Empty graph — Layer 4 consistency check is no-op
 4. No clusters — agent discovery deferred until 50+ nodes
-5. Layer 3 challenge skipped on first cycle (no anchors to compare against)
+5. Layer 3 challenge skip decision tree:
+   - First cycle (no graph): SKIP (no anchors to compare against)
+   - Subsequent cycles, Layer 1 found >80% entities: SKIP (already grounded)
+   - All other cases: RUN
 6. Progressive: first cycle builds foundation, subsequent cycles enrich
 
 ---
@@ -959,4 +1016,53 @@ On first `mycelium learn`:
 | Large repo scan | Budget exhausted on ingestion | max_repos_per_cycle, progressive coverage |
 | Hallucinated entities | Graph pollution | 5-layer verification, quarantine, anomaly detection |
 | Entity resolver false merges | Knowledge corruption | Conservative thresholds, LLM arbitration, human override |
-| Observation DB growth | Disk usage | Retention policies, vacuum command |
+| Serve API exposed on 0.0.0.0 | Unauthorized network access | Default to 127.0.0.1; optional API key auth for non-localhost |
+| Observation DB growth | Disk usage | Retention policies, vacuum command, auto-vacuum option |
+| Concurrent Claude CLI calls | Auth/rate limit conflicts | Validate concurrent `claude -p` empirically at init; fallback to serial with async I/O |
+| GitHub API rate limits | Git connector PR extraction stalls | Rate limit tracking, defer PR extraction to separate optional pass |
+| Unbounded feedback confidence | Edge confidence over/under-correction | Bounded: boost +0.03 per acceptance (cap 0.99), penalty -0.05 per correction (floor 0.1) |
+
+---
+
+## 16. Additional Design Details
+
+### Serve Mode Authentication
+
+Default bind: `127.0.0.1:8000` (localhost only). For non-localhost access, optional API key auth via `[serve] api_key = "..."` in config. No API key = reject non-localhost requests.
+
+### Backup & Export
+
+```bash
+mycelium backup                     # Atomic snapshot: brainstem.db + observation.db + embeddings.faiss → data/backups/
+mycelium backup --path /external    # Custom backup location
+mycelium export --format json       # Export full graph as JSON
+mycelium export --format graphml    # Export for external graph tools
+```
+
+Backup uses SQLite `.backup()` API for consistency. FAISS index copied atomically. Backups timestamped: `backup-YYYYMMDD-HHMMSS/`.
+
+### Embedding Model
+
+Default: `all-MiniLM-L6-v2` (384 dimensions, ~80MB). Chosen for speed/quality balance on local hardware. FAISS index dimensionality locked at creation — changing models requires full re-embed via `mycelium rebuild-embeddings`. Config documents this lock-in.
+
+### Process Guard
+
+PID file at `data/mycelium.pid`. On startup:
+1. Check if PID file exists
+2. If exists, check if process is alive (`os.kill(pid, 0)`)
+3. If alive, abort with error (only one Mycelium instance per data dir)
+4. If stale, remove PID file and proceed
+5. Write current PID, register `atexit` handler to clean up
+
+Signal handling: SIGTERM/SIGINT trigger graceful shutdown (same as `QuotaExhausted` drain path).
+
+### SQLite WAL Configuration
+
+Both databases run in WAL mode with explicit checkpoint policy:
+- Checkpoint after each learn cycle completes
+- Checkpoint when WAL exceeds 50MB
+- `PRAGMA wal_autocheckpoint = 1000` (pages) as safety net
+
+### Schema Migrations
+
+`schema_version` table tracks current version. On startup, Mycelium checks version and runs pending migrations sequentially. Migrations are Python files in `src/mycelium/migrations/` named `NNN_description.py`. Each migration is a transaction — if it fails, it rolls back cleanly.
