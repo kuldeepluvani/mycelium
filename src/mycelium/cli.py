@@ -138,8 +138,17 @@ def ask(query: str, as_json: bool):
         intent = IntentParser(orch.graph).parse(query)
         agents = AgentRouter().select(intent, orch.agent_manager.agents)
 
+        # Fallback: if no entities matched, route to all active agents
         if not agents:
-            return {"answer": "No agents available. Run 'mycelium learn' first.", "agents_used": []}
+            from mycelium.serve.router import RoutedAgent
+            active = orch.agent_manager.get_active()
+            if active:
+                agents = [
+                    RoutedAgent(agent_id=a.id, agent_name=a.name, relevance=0.5, owned_nodes_in_subgraph=len(a.node_ids))
+                    for a in active[:3]
+                ]
+            else:
+                return {"answer": "No agents available. Run 'mycelium learn' first.", "agents_used": []}
 
         agent_details = {a.agent_id: orch.agent_manager.get(a.agent_id) for a in agents}
         reasoner = ParallelReasoner(orch._llm)
