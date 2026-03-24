@@ -639,18 +639,33 @@ CREATE TABLE concepts (
 -- Document chunks (for provenance tracking on large documents)
 CREATE TABLE document_chunks (
     id TEXT PRIMARY KEY,
-    document_id TEXT NOT NULL REFERENCES documents(id),
+    document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     chunk_index INTEGER NOT NULL,
     start_offset INTEGER NOT NULL,
     end_offset INTEGER NOT NULL,
-    content_hash TEXT NOT NULL
+    content_hash TEXT NOT NULL,
+    UNIQUE(document_id, chunk_index)
 );
 
 -- Schema version (for migrations)
 CREATE TABLE schema_version (
-    version INTEGER NOT NULL,
+    version INTEGER PRIMARY KEY,
     applied_at TEXT NOT NULL
 );
+
+-- Feedback queue (persisted for crash recovery during learn cycles)
+CREATE TABLE feedback_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entity_id TEXT,
+    relationship_id TEXT,
+    adjustment REAL NOT NULL,   -- +0.03 or -0.05
+    reason TEXT NOT NULL,       -- "user_accepted" or "user_corrected"
+    queued_at TEXT NOT NULL,
+    applied_at TEXT             -- NULL until applied after learn cycle
+);
+
+-- Enable foreign keys (must be set per connection)
+-- PRAGMA foreign_keys = ON;
 
 -- Staging (perception pipeline intermediate results)
 CREATE TABLE staging_entities (
@@ -677,7 +692,12 @@ CREATE INDEX idx_entities_canonical ON entities(canonical_name);
 CREATE INDEX idx_agent_nodes_agent ON agent_nodes(agent_id);
 CREATE INDEX idx_agent_nodes_entity ON agent_nodes(entity_id);
 CREATE INDEX idx_document_chunks_doc ON document_chunks(document_id);
+CREATE INDEX idx_relationships_confidence ON relationships(confidence);
+CREATE INDEX idx_staging_doc_status ON staging_entities(document_id, status);
+CREATE INDEX idx_feedback_queue_applied ON feedback_queue(applied_at);
 ```
+
+**Foreign key strategy:** `PRAGMA foreign_keys = ON` set on every connection. Soft-deletes (`archived=1`) are the primary removal mechanism — FK constraints protect against hard-deletes of entities that still have relationships. `ON DELETE CASCADE` only on document_chunks (deleting a document should remove its chunks). All other FKs use default `RESTRICT`.
 
 ### observation.db
 
@@ -747,7 +767,7 @@ CREATE INDEX idx_health_module ON health(module, timestamp);
 
 ```toml
 [mycelium]
-data_dir = "data"
+data_dir = "data"  # Relative to mycelium.toml location; absolute paths also supported
 
 [nats]
 url = "nats://localhost:4222"
@@ -815,6 +835,7 @@ subgraph_hops = 3
 db_path = "data/observation.db"
 health_retention_days = 30
 event_retention_days = -1
+auto_vacuum_threshold_mb = 500  # auto-vacuum observation.db when exceeds this size; -1 = disabled
 
 [quota]
 default_budget = 50
