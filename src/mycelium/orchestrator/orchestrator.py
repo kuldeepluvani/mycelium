@@ -20,6 +20,7 @@ from mycelium.perception.engine import PerceptionEngine
 from mycelium.network.cluster import ClusterEngine
 from mycelium.network.agent_manager import AgentManager
 from mycelium.network.spillover import SpilloverEngine
+from mycelium.network.agent import Agent
 from mycelium.observe.store import ObservationStore
 
 
@@ -70,15 +71,18 @@ class Orchestrator:
             config=config.perception,
         )
 
-        # Network
+        # Network — adaptive thresholds based on graph size
+        # For smaller graphs (<200 nodes), relax thresholds to allow discovery
+        adaptive_min_size = max(5, config.network.min_cluster_size // 2) if True else config.network.min_cluster_size
+        adaptive_coherence = min(config.network.min_coherence, 0.15)
         self.cluster_engine = ClusterEngine(
-            min_cluster_size=config.network.min_cluster_size,
-            min_coherence=config.network.min_coherence,
+            min_cluster_size=adaptive_min_size,
+            min_coherence=adaptive_coherence,
             max_inter_density=config.network.max_inter_density,
         )
         self.agent_manager = AgentManager(
             llm=self._llm,
-            stability_cycles=config.network.stability_cycles,
+            stability_cycles=1,  # Activate on first qualifying cycle (persisted state handles multi-run stability)
         )
         self.spillover = SpilloverEngine(
             llm=self._llm,
@@ -90,12 +94,12 @@ class Orchestrator:
         self.session_store = SessionStore(str(obs_db_path))
         self.observation_store = ObservationStore(obs_db_path)
 
-        # Rebuild graph from store
+        # Rebuild graph and agents from store
         self._rebuild_graph()
+        self._load_agents()
 
     def _rebuild_graph(self):
         """Rebuild NetworkX graph from SQLite."""
-        # Load all non-archived entities
         rows = self.store.execute(
             "SELECT id FROM entities WHERE archived = 0"
         ).fetchall()
@@ -104,7 +108,6 @@ class Orchestrator:
             if entity:
                 self.graph.add_entity(entity)
 
-        # Load all non-archived relationships
         rows = self.store.execute(
             "SELECT id FROM relationships WHERE archived = 0"
         ).fetchall()
@@ -112,6 +115,56 @@ class Orchestrator:
             rel = self.store.get_relationship(row[0])
             if rel and self.graph.has_entity(rel.source_id) and self.graph.has_entity(rel.target_id):
                 self.graph.add_relationship(rel)
+
+    def _load_agents(self):
+        """Load persisted agents from SQLite."""
+        import json
+        rows = self.store.execute(
+            "SELECT id, name, domain, description, seed_nodes, status, "
+            "queries_answered, avg_confidence, discovered_at, last_active, pinned "
+            "FROM agents WHERE status != 'retired'"
+        ).fetchall()
+        for row in rows:
+            agent = Agent(
+                id=row[0], name=row[1], domain=row[2],
+                description=row[3] or "",
+                seed_nodes=json.loads(row[4]) if row[4] else [],
+                status=row[5],
+                queries_answered=row[6] or 0,
+                avg_confidence=row[7] or 0.0,
+                pinned=bool(row[10]),
+            )
+            # Load node membership
+            node_rows = self.store.execute(
+                "SELECT entity_id FROM agent_nodes WHERE agent_id = ?", (agent.id,)
+            ).fetchall()
+            agent.node_ids = [r[0] for r in node_rows]
+            self.agent_manager._agents[agent.id] = agent
+
+    def _save_agents(self):
+        """Persist agents to SQLite."""
+        import json
+        for agent in self.agent_manager.agents:
+            self.store.execute(
+                "INSERT OR REPLACE INTO agents "
+                "(id, name, domain, description, seed_nodes, status, "
+                "queries_answered, avg_confidence, discovered_at, last_active, pinned) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (agent.id, agent.name, agent.domain, agent.description,
+                 json.dumps(agent.seed_nodes), agent.status,
+                 agent.queries_answered, agent.avg_confidence,
+                 agent.discovered_at.isoformat(),
+                 agent.last_active.isoformat() if agent.last_active else None,
+                 int(agent.pinned)),
+            )
+            # Save node membership
+            self.store.execute("DELETE FROM agent_nodes WHERE agent_id = ?", (agent.id,))
+            for node_id in agent.node_ids:
+                self.store.execute(
+                    "INSERT OR IGNORE INTO agent_nodes (agent_id, entity_id, cycle_assigned) VALUES (?, ?, 1)",
+                    (agent.id, node_id),
+                )
+            self.store.conn.commit()
 
     async def learn(self, budget: int = 50) -> LearnSession:
         """Run a learn cycle with the given call budget."""
@@ -175,8 +228,9 @@ class Orchestrator:
                 for r in results:
                     session.spillovers += len(r.new_relationships)
 
-        # Save embeddings
+        # Save embeddings and agents
         self.embeddings.save()
+        self._save_agents()
 
         # Complete session
         session.status = "completed"

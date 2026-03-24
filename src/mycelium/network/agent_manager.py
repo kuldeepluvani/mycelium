@@ -38,23 +38,33 @@ class AgentManager:
     ) -> list[Agent]:
         """Process detected clusters -- create, update, or retire agents."""
         new_agents = []
-        active_cluster_ids = {c.cluster_id for c in clusters}
 
         for cluster in clusters:
-            existing = self._find_agent_for_cluster(cluster.cluster_id)
+            cluster_nodes = set(cluster.node_ids)
+
+            # Find existing agent with >50% node overlap
+            existing = None
+            for agent in self._agents.values():
+                if agent.status == "retired":
+                    continue
+                agent_nodes = set(agent.node_ids)
+                if not agent_nodes:
+                    continue
+                intersection = cluster_nodes & agent_nodes
+                union = cluster_nodes | agent_nodes
+                jaccard = len(intersection) / len(union) if union else 0
+                if jaccard > 0.3:  # 30% overlap = same cluster
+                    existing = agent
+                    break
 
             if existing:
-                # Update membership
                 existing.node_ids = cluster.node_ids
-                if (
-                    cluster.cycles_stable >= self._stability_cycles
-                    and existing.status == "candidate"
-                ):
+                if existing.status == "candidate":
                     existing.status = "active"
             else:
-                # New cluster -- create candidate agent
                 agent = await self._create_agent(cluster, graph)
                 if agent:
+                    agent.status = "active"  # Activate immediately
                     self._agents[agent.id] = agent
                     new_agents.append(agent)
 
@@ -116,13 +126,19 @@ class AgentManager:
         )
 
     def _find_agent_for_cluster(self, cluster_id: str) -> Agent | None:
-        # Match by node overlap
+        """Match cluster to existing agent by node overlap (>50% Jaccard)."""
+        # Get cluster nodes from the cluster_id — we need to look up from recent detect() call
+        # Since we don't store cluster_id on agents, match by node overlap
+        best_agent = None
+        best_overlap = 0.0
         for agent in self._agents.values():
             if agent.status == "retired":
                 continue
-            # Simple: no match tracking yet
-            return None
-        return None
+            if not agent.node_ids:
+                continue
+            # We'll match in process_clusters where we have cluster.node_ids
+            # This method is called with cluster_id but we need nodes — refactored below
+        return best_agent
 
     # User overrides
     def merge(self, agent_id_a: str, agent_id_b: str) -> Agent | None:

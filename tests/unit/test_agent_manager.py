@@ -48,7 +48,7 @@ async def test_process_clusters_creates_agents():
     assert len(new_agents) == 1
     assert new_agents[0].name == "TestAgent"
     assert new_agents[0].domain == "testing"
-    assert new_agents[0].status == "candidate"
+    assert new_agents[0].status == "active"
     assert len(manager.agents) == 1
 
 
