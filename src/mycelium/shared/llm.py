@@ -21,9 +21,11 @@ class ClaudeCLI:
 
     async def generate(self, prompt: str, system: str | None = None) -> CLIResponse:
         """Run claude -p with prompt, return response."""
-        args = ["claude", "-p", prompt]
+        # Prepend system instruction to prompt (claude CLI doesn't have --system flag)
+        full_prompt = prompt
         if system:
-            args.extend(["--system", system])
+            full_prompt = f"[System: {system}]\n\n{prompt}"
+        args = ["claude", "-p", full_prompt]
 
         for attempt in range(self._max_retries + 1):
             start = time.monotonic()

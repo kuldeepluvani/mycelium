@@ -138,8 +138,16 @@ def load_config(config_path: Path) -> MyceliumConfig:
     with open(config_path, "rb") as fh:
         raw = tomllib.load(fh)
 
-    mycelium_raw: dict = raw.get("mycelium", {})
-    config = MyceliumConfig(**mycelium_raw)
+    # Merge [mycelium] section with top-level sections (nats, connectors, etc.)
+    merged: dict = {}
+    mycelium_raw = raw.get("mycelium", {})
+    merged.update(mycelium_raw)
+
+    for key in ("nats", "connectors", "perception", "brainstem", "network", "serve", "observe", "quota"):
+        if key in raw:
+            merged[key] = raw[key]
+
+    config = MyceliumConfig(**merged)
 
     # Resolve data_dir relative to the config file's parent directory.
     if not config.data_dir.is_absolute():
