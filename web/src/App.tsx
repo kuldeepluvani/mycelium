@@ -9,6 +9,8 @@ import { GraphFilters } from './components/graph/GraphFilters'
 import { useAgents } from './hooks/useAgents'
 import { HierarchyTree } from './components/agents/HierarchyTree'
 import { SpilloverMap } from './components/agents/SpilloverMap'
+import { AskPage } from './components/ask/AskPage'
+import { ObservePage } from './components/observe/ObservePage'
 
 type Tab = 'graph' | 'agents' | 'ask' | 'learn' | 'observe'
 
@@ -26,9 +28,9 @@ export default function App() {
       <main className="flex-1 overflow-hidden">
         {tab === 'graph' && <GraphExplorerPage />}
         {tab === 'agents' && <AgentsPage />}
-        {tab === 'ask' && <Placeholder label="Ask Interface" />}
+        {tab === 'ask' && <AskPage />}
         {tab === 'learn' && <Placeholder label="Learn Dashboard" />}
-        {tab === 'observe' && <Placeholder label="Observe Events" />}
+        {tab === 'observe' && <ObservePage />}
       </main>
     </div>
   )
