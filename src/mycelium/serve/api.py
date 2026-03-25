@@ -59,6 +59,16 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
     async def health():
         return {"status": "ok"}
 
+    @app.get("/api/claude/health")
+    async def claude_health():
+        if not orch:
+            return {"available": False, "error": "orchestrator not loaded"}
+        try:
+            ok = await orch._llm.health_check()
+            return {"available": ok, "error": None if ok else "claude CLI not responding"}
+        except Exception as e:
+            return {"available": False, "error": str(e)}
+
     @app.get("/api/status")
     async def api_status():
         if not orch:

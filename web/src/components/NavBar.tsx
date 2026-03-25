@@ -13,10 +13,17 @@ const tabs: { id: Tab; label: string }[] = [
 
 export function NavBar({ activeTab, onTabChange }: { activeTab: Tab; onTabChange: (t: Tab) => void }) {
   const [stats, setStats] = useState<any>(null)
+  const [claudeOk, setClaudeOk] = useState<boolean | null>(null)
+  const [claudeError, setClaudeError] = useState<string | null>(null)
+  const [showClaudeDetail, setShowClaudeDetail] = useState(false)
 
   useEffect(() => {
     api.status().then(setStats).catch(() => {})
-    const interval = setInterval(() => api.status().then(setStats).catch(() => {}), 10000)
+    api.claudeHealth().then(r => { setClaudeOk(r.available); setClaudeError(r.error || null) }).catch(() => setClaudeOk(false))
+    const interval = setInterval(() => {
+      api.status().then(setStats).catch(() => {})
+      api.claudeHealth().then(r => { setClaudeOk(r.available); setClaudeError(r.error || null) }).catch(() => setClaudeOk(false))
+    }, 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -48,13 +55,67 @@ export function NavBar({ activeTab, onTabChange }: { activeTab: Tab; onTabChange
         ))}
       </div>
 
-      {stats && (
-        <div className="ml-auto flex gap-5 text-xs" style={{ color: 'var(--text-muted)' }}>
-          <span>{stats.graph?.nodes ?? 0} nodes</span>
-          <span>{stats.graph?.edges ?? 0} edges</span>
-          <span>{stats.agents?.active ?? 0} agents</span>
+      <div className="ml-auto flex items-center gap-5 text-xs" style={{ color: 'var(--text-muted)' }}>
+        {stats && (
+          <>
+            <span>{stats.graph?.nodes ?? 0} nodes</span>
+            <span>{stats.graph?.edges ?? 0} edges</span>
+            <span>{stats.agents?.active ?? 0} agents</span>
+          </>
+        )}
+
+        {/* Claude CLI status */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowClaudeDetail(!showClaudeDetail)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'none', border: '1px solid var(--border)',
+              borderRadius: 6, padding: '3px 10px',
+              cursor: 'pointer', fontFamily: 'inherit', fontSize: 11,
+              color: claudeOk ? 'var(--accent-green)' : claudeOk === false ? '#f85149' : 'var(--text-muted)',
+              transition: 'all 0.2s',
+            }}
+          >
+            <div style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: claudeOk ? '#7ee787' : claudeOk === false ? '#f85149' : '#8b949e',
+              boxShadow: claudeOk ? '0 0 8px rgba(126,231,135,0.6)' : claudeOk === false ? '0 0 8px rgba(248,81,73,0.6)' : 'none',
+            }} />
+            Claude
+          </button>
+
+          {showClaudeDetail && (
+            <div className="glass-panel" style={{
+              position: 'absolute', top: '100%', right: 0, marginTop: 8,
+              padding: '12px 16px', minWidth: 220, zIndex: 100,
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-primary)' }}>
+                Claude CLI Status
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <div style={{
+                  width: 10, height: 10, borderRadius: '50%',
+                  background: claudeOk ? '#7ee787' : '#f85149',
+                  boxShadow: claudeOk ? '0 0 10px rgba(126,231,135,0.6)' : '0 0 10px rgba(248,81,73,0.6)',
+                }} />
+                <span style={{ fontSize: 12, color: claudeOk ? 'var(--accent-green)' : '#f85149' }}>
+                  {claudeOk ? 'Connected' : 'Unavailable'}
+                </span>
+              </div>
+              {claudeError && (
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, wordBreak: 'break-word' }}>
+                  {claudeError}
+                </div>
+              )}
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 8 }}>
+                Used by Learn and Ask for LLM calls.
+                {!claudeOk && ' Ask/Learn will fail until resolved.'}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </nav>
   )
 }
