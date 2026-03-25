@@ -1,0 +1,71 @@
+:root {
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #0d1117;
+  --bg-panel: rgba(13, 17, 23, 0.95);
+  --border: rgba(88, 166, 255, 0.15);
+  --text-primary: #e6edf3;
+  --text-secondary: rgba(230, 237, 243, 0.6);
+  --text-muted: rgba(230, 237, 243, 0.4);
+  --accent-blue: #58a6ff;
+  --accent-green: #7ee787;
+  --accent-purple: #d2a8ff;
+  --accent-orange: #ffa657;
+  --accent-pink: #f778ba;
+  --accent-bright-blue: #79c0ff;
+  --glow-blue: 0 0 12px rgba(88, 166, 255, 0.6);
+  --glow-green: 0 0 12px rgba(126, 231, 135, 0.6);
+  --glow-purple: 0 0 12px rgba(210, 168, 255, 0.6);
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 0;
+  overflow: hidden;
+}
+
+.glass-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(88, 166, 255, 0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(88, 166, 255, 0.4); }
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.tab-active {
+  color: var(--accent-blue) !important;
+  text-shadow: 0 0 8px rgba(88, 166, 255, 0.4);
+  border-bottom-color: var(--accent-blue) !important;
+}
+
+.input-glow:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.3), 0 0 20px rgba(88, 166, 255, 0.1);
+  border-color: var(--accent-blue);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.badge-active { background: rgba(126, 231, 135, 0.15); color: #7ee787; }
+.badge-mature { background: rgba(88, 166, 255, 0.15); color: #58a6ff; }
+.badge-retired { background: rgba(139, 148, 158, 0.15); color: #8b949e; }
+.badge-direct { background: rgba(126, 231, 135, 0.15); color: #7ee787; }
+.badge-fanout { background: rgba(210, 168, 255, 0.15); color: #d2a8ff; }
+.badge-self { background: rgba(255, 166, 87, 0.15); color: #ffa657; }
