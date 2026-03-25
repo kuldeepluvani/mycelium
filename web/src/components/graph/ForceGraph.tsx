@@ -118,22 +118,34 @@ export function ForceGraph({ nodes, edges, selectedNodeId, onSelectNode, agentMa
       .join('g')
       .attr('cursor', 'pointer')
       .call(
-        d3
-          .drag<SVGGElement, SimNode>()
-          .on('start', (event, d) => {
-            if (!event.active) simulation.alphaTarget(0.3).restart()
-            d.fx = d.x
-            d.fy = d.y
-          })
-          .on('drag', (event, d) => {
-            d.fx = event.x
-            d.fy = event.y
-          })
-          .on('end', (event, d) => {
-            if (!event.active) simulation.alphaTarget(0)
-            d.fx = null
-            d.fy = null
-          })
+        (() => {
+          let dragStartX = 0, dragStartY = 0, dragged = false
+          return d3
+            .drag<SVGGElement, SimNode>()
+            .on('start', (event, d) => {
+              dragStartX = event.x
+              dragStartY = event.y
+              dragged = false
+              if (!event.active) simulation.alphaTarget(0.3).restart()
+              d.fx = d.x
+              d.fy = d.y
+            })
+            .on('drag', (event, d) => {
+              if (Math.abs(event.x - dragStartX) > 3 || Math.abs(event.y - dragStartY) > 3) {
+                dragged = true
+              }
+              d.fx = event.x
+              d.fy = event.y
+            })
+            .on('end', (event, d) => {
+              if (!event.active) simulation.alphaTarget(0)
+              d.fx = null
+              d.fy = null
+              if (!dragged) {
+                onSelectNode(d.id)
+              }
+            })
+        })()
       )
 
     // Circles
@@ -227,9 +239,6 @@ export function ForceGraph({ nodes, edges, selectedNodeId, onSelectNode, agentMa
 
         link.attr('stroke', 'rgba(88, 166, 255, 0.2)')
         node.style('opacity', 1)
-      })
-      .on('click', (_, d) => {
-        onSelectNode(d.id)
       })
 
     // Highlight selected node
