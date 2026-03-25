@@ -225,17 +225,3 @@ function AgentsPage() {
   )
 }
 
-function Placeholder({ label }: { label: string }) {
-  return (
-    <div className="flex items-center justify-center h-full">
-      <div className="text-center">
-        <div className="text-2xl font-light mb-2" style={{ color: 'var(--text-secondary)' }}>
-          {label}
-        </div>
-        <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          Coming next
-        </div>
-      </div>
-    </div>
-  )
-}
