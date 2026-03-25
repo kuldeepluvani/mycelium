@@ -168,6 +168,7 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
                 "description": getattr(a, "description", None),
                 "status": getattr(a, "status", None),
                 "node_count": len(getattr(a, "node_ids", [])),
+                "node_ids": getattr(a, "node_ids", []),
                 "confidence": getattr(a, "confidence", None),
                 "pinned": getattr(a, "pinned", False),
                 "parent_id": getattr(a, "parent_id", None),
@@ -427,5 +428,14 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
             emitter.unsubscribe(broadcast)
             if websocket in ws_clients:
                 ws_clients.remove(websocket)
+
+    # -------------------------------------------------------------------------
+    # Serve React build in production
+    # -------------------------------------------------------------------------
+    import os
+    from fastapi.staticfiles import StaticFiles
+    web_dist = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'web', 'dist')
+    if os.path.isdir(web_dist):
+        app.mount("/", StaticFiles(directory=web_dist, html=True), name="static")
 
     return app

@@ -20,9 +20,10 @@ interface ForceGraphProps {
   edges: GraphEdge[]
   selectedNodeId?: string | null
   onSelectNode: (id: string) => void
+  agentMap?: Map<string, string>
 }
 
-export function ForceGraph({ nodes, edges, selectedNodeId, onSelectNode }: ForceGraphProps) {
+export function ForceGraph({ nodes, edges, selectedNodeId, onSelectNode, agentMap }: ForceGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const simulationRef = useRef<d3.Simulation<SimNode, SimLink> | null>(null)
@@ -143,6 +144,25 @@ export function ForceGraph({ nodes, edges, selectedNodeId, onSelectNode }: Force
       .attr('stroke', (d) => getEntityColor(d.entity_class))
       .attr('stroke-width', 1.5)
       .attr('filter', 'url(#glow)')
+
+    // Agent ownership ring — outer dashed circle for nodes owned by an agent
+    if (agentMap && agentMap.size > 0) {
+      node
+        .filter((d) => agentMap.has(d.id))
+        .append('circle')
+        .attr('r', (d) => 4 + d.confidence * 8 + 4)
+        .attr('fill', 'none')
+        .attr('stroke', 'rgba(126, 231, 135, 0.4)')
+        .attr('stroke-width', 1)
+        .attr('stroke-dasharray', '3,2')
+        .attr('filter', 'url(#glow)')
+
+      // Agent name tooltip on hover
+      node
+        .filter((d) => agentMap.has(d.id))
+        .append('title')
+        .text((d) => `Agent: ${agentMap.get(d.id)}`)
+    }
 
     // Labels — always show for high confidence, hover for others
     node

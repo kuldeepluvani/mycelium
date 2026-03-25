@@ -108,6 +108,7 @@ function GraphExplorerPage() {
             edges={graph.filteredEdges}
             selectedNodeId={graph.selectedNode?.id ?? null}
             onSelectNode={graph.selectNode}
+            agentMap={graph.agentMap}
           />
         )}
         {/* Node count badge */}

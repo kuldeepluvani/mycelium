@@ -57,7 +57,16 @@ export function useGraph() {
         ])
         const loadedNodes = (nodesRes.nodes || []) as GraphNode[]
         setNodes(loadedNodes)
-        setEdges((edgesRes.edges || []) as GraphEdge[])
+        // Map source_id/target_id → source/target for D3
+        const mappedEdges = (edgesRes.edges || []).map((e: any) => ({
+          ...e,
+          source: e.source_id || e.source,
+          target: e.target_id || e.target,
+          type: e.rel_type || e.type,
+          category: e.rel_category || e.category,
+          confidence: e.confidence ?? 0.5,
+        })) as GraphEdge[]
+        setEdges(mappedEdges)
         // Default: all entity classes enabled
         const classes = new Set(loadedNodes.map((n) => n.entity_class).filter(Boolean))
         setEntityClassFilter(classes)
@@ -122,6 +131,21 @@ export function useGraph() {
     })
   }
 
+  // Agent ownership map: nodeId → agentName
+  const [agentMap, setAgentMap] = useState<Map<string, string>>(new Map())
+
+  useEffect(() => {
+    api.agents().then(res => {
+      const map = new Map<string, string>()
+      for (const agent of res.agents || []) {
+        for (const nid of agent.node_ids || []) {
+          map.set(nid, agent.name)
+        }
+      }
+      setAgentMap(map)
+    }).catch(() => {})
+  }, [])
+
   return {
     nodes,
     edges,
@@ -139,5 +163,6 @@ export function useGraph() {
     setConfidenceRange,
     selectNode,
     deselectNode,
+    agentMap,
   }
 }
