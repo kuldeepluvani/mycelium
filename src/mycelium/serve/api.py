@@ -182,22 +182,22 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
         meta_agents = []
         for m in orch.agent_manager.get_meta_agents():
             children = []
-            manifest = getattr(m, "manifest", None)
-            if manifest:
-                for child_id in getattr(manifest, "l1_agent_ids", []):
-                    agent = orch.agent_manager.get(child_id)
-                    if agent:
-                        children.append({
-                            "id": agent.id,
-                            "name": agent.name,
-                            "domain": getattr(agent, "domain", None),
-                            "status": getattr(agent, "status", None),
-                        })
+            for c in getattr(m, "children", []):
+                children.append({
+                    "agent_id": c.agent_id,
+                    "agent_name": c.agent_name,
+                    "domain": c.domain,
+                    "confidence": c.confidence,
+                    "entity_count": c.entity_count,
+                    "key_entities": c.key_entities,
+                    "knowledge_gaps": c.knowledge_gaps,
+                })
             meta_agents.append({
                 "id": m.id,
                 "name": m.name,
                 "domain": getattr(m, "domain", None),
                 "description": getattr(m, "description", None),
+                "status": getattr(m, "status", "active"),
                 "children": children,
             })
         return {"meta_agents": meta_agents}
