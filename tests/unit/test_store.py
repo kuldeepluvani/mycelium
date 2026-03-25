@@ -136,3 +136,35 @@ def test_insert_and_get_relationship(store: BrainstemStore) -> None:
     assert loaded.version == 1
     assert loaded.quarantined is False
     assert loaded.archived is False
+
+
+# ── meta-agent persistence ────────────────────────────────────────────────
+
+def test_upsert_and_load_meta_agent(tmp_path):
+    from mycelium.brainstem.store import BrainstemStore
+    from mycelium.network.meta_agent import MetaAgent, ChildManifest
+    store = BrainstemStore(tmp_path / "test.db")
+    store.initialize()
+
+    # Need a parent agent in the agents table for FK
+    store.execute(
+        "INSERT INTO agents (id, name, domain, status, discovered_at) VALUES (?, ?, ?, ?, ?)",
+        ("a1", "Cache Expert", "caching", "active", "2026-01-01T00:00:00+00:00"),
+    )
+    store.conn.commit()
+
+    meta = MetaAgent(id="m1", name="Backend Cortex", domain="backend", description="test")
+    meta.children = [
+        ChildManifest(agent_id="a1", agent_name="Cache Expert", domain="caching",
+                      confidence=0.9, entity_count=10, key_entities=["redis"]),
+    ]
+    store.upsert_meta_agent(meta)
+
+    loaded = store.load_meta_agents()
+    assert len(loaded) == 1
+    assert loaded[0].id == "m1"
+    assert loaded[0].name == "Backend Cortex"
+    assert len(loaded[0].children) == 1
+    assert loaded[0].children[0].agent_name == "Cache Expert"
+    assert loaded[0].children[0].key_entities == ["redis"]
+    store.close()

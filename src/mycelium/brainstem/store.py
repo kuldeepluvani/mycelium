@@ -264,3 +264,60 @@ class BrainstemStore:
             quarantined=bool(row["quarantined"]),
             archived=bool(row["archived"]),
         )
+
+    # ── meta-agent CRUD ──────────────────────────────────────────────────
+
+    def upsert_meta_agent(self, meta) -> None:
+        """Persist a MetaAgent and its children."""
+        assert self.conn is not None
+        self.conn.execute(
+            "INSERT OR REPLACE INTO meta_agents (id, name, domain, description, status, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (meta.id, meta.name, meta.domain, meta.description, meta.status,
+             meta.created_at.isoformat()),
+        )
+        self.conn.execute("DELETE FROM meta_agent_children WHERE meta_agent_id = ?", (meta.id,))
+        for child in meta.children:
+            self.conn.execute(
+                "INSERT INTO meta_agent_children "
+                "(meta_agent_id, agent_id, domain, confidence, entity_count, key_entities, knowledge_gaps) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (meta.id, child.agent_id, child.domain, child.confidence,
+                 child.entity_count, json.dumps(child.key_entities),
+                 json.dumps(child.knowledge_gaps)),
+            )
+        self.conn.commit()
+
+    def load_meta_agents(self) -> list:
+        """Load all active MetaAgents with children."""
+        assert self.conn is not None
+        from mycelium.network.meta_agent import MetaAgent, ChildManifest
+        rows = self.conn.execute(
+            "SELECT id, name, domain, description, status, created_at FROM meta_agents WHERE status = 'active'"
+        ).fetchall()
+        metas = []
+        for r in rows:
+            children_rows = self.conn.execute(
+                "SELECT agent_id, domain, confidence, entity_count, key_entities, knowledge_gaps "
+                "FROM meta_agent_children WHERE meta_agent_id = ?", (r["id"],)
+            ).fetchall()
+            children = []
+            for cr in children_rows:
+                agent_name = cr["agent_id"]
+                agent_row = self.conn.execute("SELECT name FROM agents WHERE id = ?", (cr["agent_id"],)).fetchone()
+                if agent_row:
+                    agent_name = agent_row["name"]
+                children.append(ChildManifest(
+                    agent_id=cr["agent_id"], agent_name=agent_name,
+                    domain=cr["domain"] or "", confidence=cr["confidence"],
+                    entity_count=cr["entity_count"],
+                    key_entities=json.loads(cr["key_entities"]) if cr["key_entities"] else [],
+                    knowledge_gaps=json.loads(cr["knowledge_gaps"]) if cr["knowledge_gaps"] else [],
+                ))
+            metas.append(MetaAgent(
+                id=r["id"], name=r["name"], domain=r["domain"] or "",
+                description=r["description"] or "", status=r["status"],
+                children=children,
+                created_at=datetime.fromisoformat(r["created_at"]) if r["created_at"] else datetime.now(),
+            ))
+        return metas

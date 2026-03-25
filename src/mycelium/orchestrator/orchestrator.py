@@ -98,6 +98,16 @@ class Orchestrator:
         self._rebuild_graph()
         self._load_agents()
 
+        # Load persisted L2 meta-agents
+        persisted_metas = self.store.load_meta_agents()
+        if persisted_metas:
+            self.agent_manager._meta_agents = {m.id: m for m in persisted_metas}
+            for meta in persisted_metas:
+                for child in meta.children:
+                    agent = self.agent_manager.get(child.agent_id)
+                    if agent:
+                        agent.parent_id = meta.id
+
     def _rebuild_graph(self):
         """Rebuild NetworkX graph from SQLite."""
         rows = self.store.execute(
@@ -165,6 +175,10 @@ class Orchestrator:
                     (agent.id, node_id),
                 )
             self.store.conn.commit()
+
+        # Save L2 meta-agents
+        for meta in self.agent_manager.get_meta_agents():
+            self.store.upsert_meta_agent(meta)
 
     async def learn(self, budget: int = 50) -> LearnSession:
         """Run a learn cycle with the given call budget."""
