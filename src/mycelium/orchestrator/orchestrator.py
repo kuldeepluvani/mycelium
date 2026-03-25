@@ -242,6 +242,35 @@ class Orchestrator:
                 for r in results:
                     session.spillovers += len(r.new_relationships)
 
+            # Cache L2 spillover results for API
+            import json as json_mod
+            metas = self.agent_manager.get_meta_agents()
+            if len(metas) >= 2:
+                l2_results = await self.spillover.analyze_meta_pairs(
+                    metas, self.agent_manager.get_active(), self.graph
+                )
+                # Clear old cache and store new
+                self.store.execute("DELETE FROM spillover_cache")
+                active_metas = [m for m in metas if m.status == "active"]
+                idx = 0
+                for i, meta_a in enumerate(active_metas):
+                    for meta_b in active_metas[i + 1:]:
+                        if idx < len(l2_results) and not l2_results[idx].skipped:
+                            self.store.execute(
+                                "INSERT INTO spillover_cache "
+                                "(meta_a_id, meta_a_name, meta_b_id, meta_b_name, relationships, computed_at) "
+                                "VALUES (?, ?, ?, ?, ?, ?)",
+                                (meta_a.id, meta_a.name, meta_b.id, meta_b.name,
+                                 json_mod.dumps([
+                                     {"source": r.source_id, "target": r.target_id,
+                                      "rel_type": r.rel_type, "rationale": r.rationale}
+                                     for r in l2_results[idx].new_relationships
+                                 ]),
+                                 datetime.now(timezone.utc).isoformat()),
+                            )
+                        idx += 1
+                self.store.conn.commit()
+
         # Save embeddings and agents
         self.embeddings.save()
         self._save_agents()
