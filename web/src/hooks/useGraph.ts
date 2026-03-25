@@ -110,7 +110,23 @@ export function useGraph() {
     }
     try {
       const detail = await api.graphEntity(id)
-      setSelectedNode(detail as EntityDetail)
+      // API returns {entity: {...}, relationships: [...], neighbor_ids: [...]}
+      // Flatten into EntityDetail shape
+      const entity = detail.entity || detail
+      const relationships = (detail.relationships || []).map((r: any) => ({
+        type: r.rel_type || r.type,
+        target_id: r.source_id === id ? r.target_id : r.source_id,
+        target_name: r.source_id === id ? r.target_id : r.source_id,
+        category: r.rel_category || r.category,
+        confidence: r.confidence ?? 0.5,
+        rationale: r.rationale,
+      }))
+      // Enrich target names from our nodes list
+      for (const rel of relationships) {
+        const targetNode = nodes.find((n) => n.id === rel.target_id)
+        if (targetNode) rel.target_name = targetNode.name
+      }
+      setSelectedNode({ ...entity, relationships } as EntityDetail)
     } catch {
       // Fall back to basic node info
       const basic = nodes.find((n) => n.id === id)
