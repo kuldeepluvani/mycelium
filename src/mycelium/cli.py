@@ -124,45 +124,24 @@ def serve(port: int, host: str):
 @cli.command()
 @click.argument("query")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
-def ask(query: str, as_json: bool):
+@click.option("--flat", is_flag=True, help="Force flat routing (skip cortex)")
+def ask(query: str, as_json: bool, flat: bool):
     """Ask a question."""
     import json as json_mod
     orch = _load_orchestrator()
 
     async def run_query():
-        from mycelium.serve.intent import IntentParser
-        from mycelium.serve.router import AgentRouter
-        from mycelium.serve.reasoner import ParallelReasoner
-        from mycelium.serve.synthesizer import Synthesizer
-
-        intent = IntentParser(orch.graph).parse(query)
-        agents = AgentRouter().select(intent, orch.agent_manager.agents)
-
-        # Fallback: if no entities matched, route to all active agents
-        if not agents:
-            from mycelium.serve.router import RoutedAgent
-            active = orch.agent_manager.get_active()
-            if active:
-                agents = [
-                    RoutedAgent(agent_id=a.id, agent_name=a.name, relevance=0.5, owned_nodes_in_subgraph=len(a.node_ids))
-                    for a in active[:3]
-                ]
-            else:
-                return {"answer": "No agents available. Run 'mycelium learn' first.", "agents_used": []}
-
-        agent_details = {a.agent_id: orch.agent_manager.get(a.agent_id) for a in agents}
-        reasoner = ParallelReasoner(orch._llm)
-        responses = await reasoner.reason(query, agents, agent_details, orch.graph)
-
-        synthesizer = Synthesizer(orch._llm)
-        result = await synthesizer.synthesize(query, responses)
-
+        from mycelium.serve.query_engine import QueryEngine
+        engine = QueryEngine(orch=orch)
+        qr = await engine.ask(query, mode="flat" if flat else "auto")
         return {
-            "answer": result.answer,
-            "rationale": result.rationale_chain,
-            "unknowns": result.unknowns,
-            "follow_ups": result.follow_ups,
-            "agents_used": [a.agent_name for a in agents],
+            "answer": qr.answer,
+            "agents_used": qr.agents_used,
+            "coordinated_by": qr.coordinated_by,
+            "mode": qr.mode,
+            "rationale": qr.rationale,
+            "unknowns": qr.unknowns,
+            "follow_ups": qr.follow_ups,
         }
 
     result = asyncio.run(run_query())
@@ -173,6 +152,9 @@ def ask(query: str, as_json: bool):
         console.print(f"\n{result['answer']}")
         if result.get("agents_used"):
             console.print(f"\n[dim]Agents: {', '.join(result['agents_used'])}[/dim]")
+        if result.get("coordinated_by"):
+            console.print(f"[dim]Cortex: {result['coordinated_by']} ({result.get('mode', '')})[/dim]")
+
 
 
 @cli.command()
