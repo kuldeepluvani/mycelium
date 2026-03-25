@@ -34,7 +34,7 @@ export function ResponsePanel({ result, onFollowUp }: ResponsePanelProps) {
           Answer
         </div>
         <p className="text-sm leading-relaxed" style={{ color: result.answer ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-          {result.answer || 'No answer generated. Claude CLI may not be responding — check the Claude status indicator above.'}
+          {result.answer || 'Agents were activated but returned an empty response. This typically happens when Claude CLI (`claude -p`) returns empty output in the current environment. Try running `mycelium ask` from the terminal instead.'}
         </p>
       </div>
 
