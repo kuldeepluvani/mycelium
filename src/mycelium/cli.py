@@ -116,7 +116,8 @@ def serve(port: int, host: str):
     import uvicorn
     from mycelium.serve.api import create_app
 
-    app = create_app(host=host)
+    orch = _load_orchestrator()
+    app = create_app(orch=orch, host=host)
     console.print(f"Serving on {host}:{port}")
     uvicorn.run(app, host=host, port=port)
 
