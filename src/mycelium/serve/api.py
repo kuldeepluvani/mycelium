@@ -329,8 +329,18 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
             except Exception as exc:
                 await emitter.emit({"type": "learn.error", "error": str(exc)})
 
-        asyncio.create_task(_run())
+        learn_task = asyncio.create_task(_run())
+        app.state.learn_task = learn_task
         return {"ok": True, "budget": budget, "status": "started"}
+
+    @app.post("/api/learn/cancel")
+    async def learn_cancel():
+        task = getattr(app.state, 'learn_task', None)
+        if task and not task.done():
+            task.cancel()
+            app.state.learn_task = None
+            return {"ok": True, "status": "cancelled"}
+        return {"ok": False, "status": "no_running_learn"}
 
     @app.get("/api/learn/sessions")
     async def learn_sessions(limit: int = 20):
@@ -346,7 +356,10 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
                 "spent": s.spent,
                 "entities_created": s.entities_created,
                 "edges_created": s.edges_created,
+                "agents_discovered": s.agents_discovered,
+                "spillovers": s.spillovers,
                 "started_at": s.started_at.isoformat() if s.started_at else None,
+                "completed_at": s.completed_at.isoformat() if s.completed_at else None,
             })
         return {"sessions": result}
 

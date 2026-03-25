@@ -9,9 +9,12 @@ export interface LearnSession {
   spent: number
   entities_created: number
   edges_created: number
-  agents_spawned: number
+  agents_discovered?: number
+  agents_spawned?: number
+  spillovers?: number
   documents_processed?: string[]
-  created_at: string
+  started_at: string
+  completed_at?: string
 }
 
 export interface LearnProgress {
@@ -88,6 +91,17 @@ export function useLearn() {
     }
   }, [])
 
+  const cancelLearn = useCallback(async () => {
+    try {
+      await api.learnCancel()
+      setIsLearning(false)
+      fetchSessions()
+    } catch (err) {
+      console.error('Failed to cancel learn', err)
+      setIsLearning(false)
+    }
+  }, [fetchSessions])
+
   return {
     sessions,
     isLearning,
@@ -97,5 +111,6 @@ export function useLearn() {
     setSelectedSession,
     loading,
     startLearn,
+    cancelLearn,
   }
 }

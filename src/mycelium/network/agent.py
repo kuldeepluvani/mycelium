@@ -18,3 +18,4 @@ class Agent:
     discovered_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_active: datetime | None = None
     pinned: bool = False
+    parent_id: str | None = None  # L2 meta-agent that owns this L1

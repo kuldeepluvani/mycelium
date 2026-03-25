@@ -14,6 +14,7 @@ export function LearnPage() {
     setSelectedSession,
     loading,
     startLearn,
+    cancelLearn,
   } = useLearn()
 
   return (
@@ -31,7 +32,7 @@ export function LearnPage() {
       {/* Top row: controls + chart */}
       <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }}>
-          <LearnControls isLearning={isLearning} onStart={startLearn} />
+          <LearnControls isLearning={isLearning} onStart={startLearn} onCancel={cancelLearn} />
         </div>
         <div style={{ flexShrink: 0 }}>
           <GrowthChart sessions={sessions} />

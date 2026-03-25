@@ -1,0 +1,65 @@
+<h2>Tab Views — 5 Full-Screen Sections</h2>
+<p class="subtitle">Each tab is a dedicated workspace. Click to expand details.</p>
+
+<div class="options">
+  <div class="option" data-choice="graph" onclick="toggleSelect(this)">
+    <div class="letter" style="background: linear-gradient(135deg, #58a6ff, #388bfd);">1</div>
+    <div class="content">
+      <h3>Graph Explorer</h3>
+      <p><strong>Full screen:</strong> D3 force-directed graph with vivid neural glow. Zoom, pan, drag nodes.</p>
+      <p><strong>Left sidebar (collapsible):</strong> Search entities, filter by type (service/person/ticket/concept), filter by confidence range, cluster highlighting toggle.</p>
+      <p><strong>Right panel (on node click):</strong> Entity inspector — name, class, domain, confidence, decay rate, provenance docs, all relationships (typed, with rationale), temporal scope. Click relationship → navigate to connected entity.</p>
+      <p><strong>Animations:</strong> Nodes pulse based on confidence (brighter = higher). Edges glow by strength. Cluster boundaries shown as translucent halos. Hovering a node highlights its neighborhood. Data particles flow along edges during learn cycles.</p>
+      <p><strong>Graph diff toggle:</strong> Button in toolbar — "Show changes since last learn". New nodes glow green, removed fade red, modified pulse yellow.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="agents" onclick="toggleSelect(this)">
+    <div class="letter" style="background: linear-gradient(135deg, #7ee787, #3fb950);">2</div>
+    <div class="content">
+      <h3>Agent Hierarchy</h3>
+      <p><strong>Main view:</strong> Interactive tree — L2 meta-agents at top, L1 specialists below. Expandable/collapsible. Animated connections between L2 → L1.</p>
+      <p><strong>Agent cards:</strong> Each agent shows: name, domain, status badge (active/mature/retired), entity count, confidence bar, knowledge gaps list, key entities as tags.</p>
+      <p><strong>L2 cards (special):</strong> Show delegation stats (how many direct vs fanout vs self), children count, spillover bridges to other L2s visualized as arcing lines.</p>
+      <p><strong>Actions:</strong> Pin/unpin, rename (inline edit), retire (with confirmation). All via API.</p>
+      <p><strong>Spillover map:</strong> Toggle view — shows L2-to-L2 connections as a chord diagram or arc diagram. Edge thickness = number of spillover relationships. Click → see shared entities.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="ask" onclick="toggleSelect(this)">
+    <div class="letter" style="background: linear-gradient(135deg, #d2a8ff, #a371f7);">3</div>
+    <div class="content">
+      <h3>Ask (Query Interface)</h3>
+      <p><strong>Input:</strong> Full-width text input with glow border on focus. Submit button + keyboard shortcut (Cmd+Enter).</p>
+      <p><strong>Live routing animation:</strong> After submit, shows animated flow: Query → Intent parsed (entities highlighted) → L2 selected (card lights up) → Strategy chosen (direct/fanout badge) → L1 agents activated (cards pulse) → Responses stream in → L2 synthesis appears.</p>
+      <p><strong>Response area:</strong> Final synthesized answer with agent attribution. Each L1 response collapsible below. Evidence chain: click claim → see source entity → see source document.</p>
+      <p><strong>History:</strong> Past queries in left sidebar. Click to replay routing visualization.</p>
+      <p><strong>Toggle:</strong> Cortex mode / Flat mode switch for comparison.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="learn" onclick="toggleSelect(this)">
+    <div class="letter" style="background: linear-gradient(135deg, #ffa657, #d29922);">4</div>
+    <div class="content">
+      <h3>Learn Dashboard</h3>
+      <p><strong>Controls:</strong> Quick (20) / Standard (50) / Deep (100) buttons. Custom budget slider. Start/stop learn cycle.</p>
+      <p><strong>Live progress:</strong> Animated progress bar with quota spent/remaining. Below: real-time feed showing each document being processed, entities extracted, relationships built, agents spawned. Each step animates in.</p>
+      <p><strong>Session history:</strong> Table of past learn sessions — budget, spent, entities created, edges, agents discovered, timestamp. Click → detail view showing which docs were processed.</p>
+      <p><strong>Graph growth chart:</strong> Sparkline showing entity count and edge count over time (across sessions).</p>
+      <p><strong>Post-learn diff:</strong> After cycle completes, shows "What changed" — new entities (green), new edges, new agents, retired agents. Animated summary.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="observe" onclick="toggleSelect(this)">
+    <div class="letter" style="background: linear-gradient(135deg, #ff7b72, #f85149);">5</div>
+    <div class="content">
+      <h3>Observe (Live Events)</h3>
+      <p><strong>Event stream:</strong> Real-time scrolling feed of all system events. Color-coded by category (perception=blue, network=green, serve=purple, system=red). Filter toggles per category.</p>
+      <p><strong>Event detail:</strong> Click event → expandable JSON payload. Timestamp, module, trace ID.</p>
+      <p><strong>Health dashboard:</strong> Cards showing module health — perception pipeline, graph store, embedding index, Claude CLI status, connector status. Green/yellow/red badges with last-check timestamp.</p>
+      <p><strong>Animation:</strong> Events flow in from the right side as a stream. During learn cycles, the feed accelerates visually. Idle state shows a calm pulse.</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top: 24px;">All 5 tabs share the top nav bar with the MYCELIUM logo (glowing dot), tab labels, and a global status indicator (graph node count, active agents, last learn time).</p>

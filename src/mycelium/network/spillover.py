@@ -120,3 +120,44 @@ class SpilloverEngine:
                 result = await self.analyze_pair(a, b, graph)
                 results.append(result)
         return results
+
+    async def analyze_meta_pairs(
+        self,
+        meta_agents: list,  # list[MetaAgent]
+        l1_agents: list[Agent],
+        graph: KnowledgeGraph,
+    ) -> list[SpilloverResult]:
+        """L2-to-L2 spillover: analyze between meta-agent pairs."""
+        results = []
+        active_metas = [m for m in meta_agents if m.status == "active"]
+
+        for i, meta_a in enumerate(active_metas):
+            for meta_b in active_metas[i + 1 :]:
+                a_nodes: set[str] = set()
+                for agent in l1_agents:
+                    if agent.parent_id == meta_a.id:
+                        a_nodes.update(agent.node_ids)
+                b_nodes: set[str] = set()
+                for agent in l1_agents:
+                    if agent.parent_id == meta_b.id:
+                        b_nodes.update(agent.node_ids)
+
+                synth_a = Agent(
+                    id=meta_a.id,
+                    name=meta_a.name,
+                    domain=meta_a.domain,
+                    node_ids=list(a_nodes),
+                    status="active",
+                )
+                synth_b = Agent(
+                    id=meta_b.id,
+                    name=meta_b.name,
+                    domain=meta_b.domain,
+                    node_ids=list(b_nodes),
+                    status="active",
+                )
+
+                result = await self.analyze_pair(synth_a, synth_b, graph)
+                results.append(result)
+
+        return results

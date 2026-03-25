@@ -3,6 +3,7 @@ import { useState } from 'react'
 interface LearnControlsProps {
   isLearning: boolean
   onStart: (budget: number) => void
+  onCancel?: () => void
 }
 
 interface PresetConfig {
@@ -101,7 +102,7 @@ function PresetButton({
   )
 }
 
-export function LearnControls({ isLearning, onStart }: LearnControlsProps) {
+export function LearnControls({ isLearning, onStart, onCancel }: LearnControlsProps) {
   const [customBudget, setCustomBudget] = useState<string>('30')
 
   const handleCustomStart = () => {
@@ -115,8 +116,33 @@ export function LearnControls({ isLearning, onStart }: LearnControlsProps) {
         <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '4px' }}>
           Learn Cycle
         </div>
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-          {isLearning ? 'Learning in progress...' : 'Select a budget to start a new learn cycle'}
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {isLearning ? (
+            <>
+              <span style={{ animation: 'pulse-glow 1.5s ease-in-out infinite', color: 'var(--accent-blue)' }}>Learning in progress...</span>
+              {onCancel && (
+                <button
+                  onClick={onCancel}
+                  style={{
+                    padding: '3px 10px',
+                    background: 'rgba(248, 81, 73, 0.15)',
+                    border: '1px solid rgba(248, 81, 73, 0.4)',
+                    borderRadius: '6px',
+                    color: '#f85149',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248, 81, 73, 0.3)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(248, 81, 73, 0.15)' }}
+                >
+                  Cancel
+                </button>
+              )}
+            </>
+          ) : 'Select a budget to start a new learn cycle'}
         </div>
       </div>
 

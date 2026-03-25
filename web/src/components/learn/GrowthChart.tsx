@@ -20,13 +20,13 @@ const INNER_W = W - PAD.left - PAD.right
 const INNER_H = H - PAD.top - PAD.bottom
 
 function buildCumulative(sessions: LearnSession[]) {
-  const sorted = [...sessions].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+  const sorted = [...sessions].sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime())
   let cumEntities = 0
   let cumEdges = 0
   return sorted.map(s => {
     cumEntities += s.entities_created ?? 0
     cumEdges += s.edges_created ?? 0
-    return { entities: cumEntities, edges: cumEdges, date: s.created_at }
+    return { entities: cumEntities, edges: cumEdges, date: s.started_at }
   })
 }
 

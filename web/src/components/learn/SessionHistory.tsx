@@ -48,7 +48,7 @@ function DetailPanel({ session }: { session: LearnSession }) {
           { label: 'Spent', value: session.spent },
           { label: 'Entities', value: session.entities_created },
           { label: 'Edges', value: session.edges_created },
-          { label: 'Agents', value: session.agents_spawned },
+          { label: 'Agents', value: session.agents_discovered ?? session.agents_spawned ?? 0 },
         ].map(({ label, value }) => (
           <div key={label} style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--accent-blue)' }}>{value ?? '—'}</div>
@@ -162,9 +162,9 @@ export function SessionHistory({ sessions, selectedSession, onSelectSession, loa
                     <td style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--text-secondary)' }}>{session.spent}</td>
                     <td style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--accent-purple)' }}>{session.entities_created}</td>
                     <td style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--accent-bright-blue)' }}>{session.edges_created}</td>
-                    <td style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--accent-green)' }}>{session.agents_spawned}</td>
+                    <td style={{ padding: '10px 16px', fontSize: '13px', color: 'var(--accent-green)' }}>{session.agents_discovered ?? session.agents_spawned ?? ''}</td>
                     <td style={{ padding: '10px 16px', fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {new Date(session.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {session.started_at ? new Date(session.started_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                     </td>
                   </tr>
                   {isSelected && (

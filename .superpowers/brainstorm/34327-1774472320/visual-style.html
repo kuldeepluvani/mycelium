@@ -1,0 +1,165 @@
+<h2>Visual Direction: Neural Aesthetic</h2>
+<p class="subtitle">Which intensity level fits Mycelium best?</p>
+
+<div class="cards">
+  <div class="card" data-choice="subtle" onclick="toggleSelect(this)" style="background: linear-gradient(135deg, #0a0a1a 0%, #0d1117 50%, #0a0a1a 100%); border: 1px solid rgba(88, 166, 255, 0.15); border-radius: 16px; overflow: hidden; cursor: pointer;">
+    <div class="card-image" style="height: 280px; position: relative; overflow: hidden;">
+      <!-- Subtle neural -->
+      <div style="position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 40%, rgba(88, 166, 255, 0.08) 0%, transparent 60%);">
+      </div>
+      <!-- Mock nav -->
+      <div style="padding: 12px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(88, 166, 255, 0.1);">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #58a6ff; box-shadow: 0 0 6px #58a6ff;"></div>
+        <span style="color: #e6edf3; font-size: 13px; font-weight: 600; letter-spacing: 1px;">MYCELIUM</span>
+        <div style="margin-left: auto; display: flex; gap: 16px;">
+          <span style="color: rgba(88, 166, 255, 0.6); font-size: 11px;">GRAPH</span>
+          <span style="color: rgba(88, 166, 255, 0.6); font-size: 11px;">AGENTS</span>
+          <span style="color: rgba(88, 166, 255, 0.6); font-size: 11px;">LEARN</span>
+        </div>
+      </div>
+      <!-- Mock graph area -->
+      <svg viewBox="0 0 400 200" style="width: 100%; padding: 10px;">
+        <!-- Edges with subtle glow -->
+        <line x1="120" y1="80" x2="200" y2="60" stroke="rgba(88, 166, 255, 0.25)" stroke-width="1"/>
+        <line x1="200" y1="60" x2="280" y2="100" stroke="rgba(88, 166, 255, 0.25)" stroke-width="1"/>
+        <line x1="200" y1="60" x2="160" y2="140" stroke="rgba(88, 166, 255, 0.15)" stroke-width="1"/>
+        <line x1="280" y1="100" x2="320" y2="160" stroke="rgba(88, 166, 255, 0.15)" stroke-width="1"/>
+        <line x1="120" y1="80" x2="80" y2="150" stroke="rgba(88, 166, 255, 0.15)" stroke-width="1"/>
+        <line x1="160" y1="140" x2="280" y2="100" stroke="rgba(88, 166, 255, 0.12)" stroke-width="1"/>
+        <!-- Nodes -->
+        <circle cx="120" cy="80" r="6" fill="#0d1117" stroke="#58a6ff" stroke-width="1.5"/>
+        <circle cx="200" cy="60" r="8" fill="#0d1117" stroke="#58a6ff" stroke-width="1.5"/>
+        <circle cx="280" cy="100" r="5" fill="#0d1117" stroke="#7ee787" stroke-width="1.5"/>
+        <circle cx="160" cy="140" r="4" fill="#0d1117" stroke="#d2a8ff" stroke-width="1.5"/>
+        <circle cx="320" cy="160" r="5" fill="#0d1117" stroke="#ffa657" stroke-width="1.5"/>
+        <circle cx="80" cy="150" r="4" fill="#0d1117" stroke="#58a6ff" stroke-width="1.5"/>
+        <!-- Labels -->
+        <text x="200" y="48" fill="rgba(230,237,243,0.6)" font-size="9" text-anchor="middle">auth-service</text>
+        <text x="280" y="88" fill="rgba(126,231,135,0.6)" font-size="8" text-anchor="middle">redis</text>
+      </svg>
+    </div>
+    <div class="card-body" style="padding: 16px; background: rgba(13,17,23,0.8);">
+      <h3 style="color: #e6edf3; margin: 0 0 6px 0; font-size: 15px;">A: Subtle Neural</h3>
+      <p style="color: rgba(230,237,243,0.5); font-size: 12px; margin: 0;">Muted glows, thin edges, dark voids. Feels like looking at a brain scan through frosted glass. Professional enough for a team meeting.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="vivid" onclick="toggleSelect(this)" style="background: linear-gradient(135deg, #0a0a1a 0%, #0d1117 50%, #0a0a1a 100%); border: 1px solid rgba(88, 166, 255, 0.15); border-radius: 16px; overflow: hidden; cursor: pointer;">
+    <div class="card-image" style="height: 280px; position: relative; overflow: hidden;">
+      <!-- Vivid neural -->
+      <div style="position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 40%, rgba(88, 166, 255, 0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(210, 168, 255, 0.1) 0%, transparent 50%);">
+      </div>
+      <!-- Mock nav -->
+      <div style="padding: 12px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(88, 166, 255, 0.15);">
+        <div style="width: 10px; height: 10px; border-radius: 50%; background: #58a6ff; box-shadow: 0 0 12px #58a6ff, 0 0 24px rgba(88,166,255,0.3);"></div>
+        <span style="color: #e6edf3; font-size: 13px; font-weight: 600; letter-spacing: 2px;">MYCELIUM</span>
+        <div style="margin-left: auto; display: flex; gap: 16px;">
+          <span style="color: #58a6ff; font-size: 11px; text-shadow: 0 0 8px rgba(88,166,255,0.4);">GRAPH</span>
+          <span style="color: rgba(230,237,243,0.4); font-size: 11px;">AGENTS</span>
+          <span style="color: rgba(230,237,243,0.4); font-size: 11px;">LEARN</span>
+        </div>
+      </div>
+      <!-- Mock graph area with glow -->
+      <svg viewBox="0 0 400 200" style="width: 100%; padding: 10px;">
+        <defs>
+          <filter id="glow2">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="edgeglow2">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <!-- Glowing edges -->
+        <line x1="120" y1="80" x2="200" y2="60" stroke="#58a6ff" stroke-width="1.5" opacity="0.5" filter="url(#edgeglow2)"/>
+        <line x1="200" y1="60" x2="280" y2="100" stroke="#58a6ff" stroke-width="2" opacity="0.6" filter="url(#edgeglow2)"/>
+        <line x1="200" y1="60" x2="160" y2="140" stroke="#d2a8ff" stroke-width="1" opacity="0.4" filter="url(#edgeglow2)"/>
+        <line x1="280" y1="100" x2="320" y2="160" stroke="#7ee787" stroke-width="1" opacity="0.4" filter="url(#edgeglow2)"/>
+        <line x1="120" y1="80" x2="80" y2="150" stroke="#58a6ff" stroke-width="1" opacity="0.3" filter="url(#edgeglow2)"/>
+        <line x1="160" y1="140" x2="280" y2="100" stroke="rgba(210,168,255,0.3)" stroke-width="1" filter="url(#edgeglow2)"/>
+        <!-- Animated pulse on main edge -->
+        <circle r="3" fill="#58a6ff" opacity="0.8" filter="url(#glow2)">
+          <animateMotion dur="3s" repeatCount="indefinite" path="M200,60 L280,100"/>
+        </circle>
+        <!-- Glowing nodes -->
+        <circle cx="120" cy="80" r="7" fill="rgba(88,166,255,0.15)" stroke="#58a6ff" stroke-width="2" filter="url(#glow2)"/>
+        <circle cx="200" cy="60" r="10" fill="rgba(88,166,255,0.2)" stroke="#58a6ff" stroke-width="2" filter="url(#glow2)">
+          <animate attributeName="r" values="10;11;10" dur="2s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="280" cy="100" r="6" fill="rgba(126,231,135,0.15)" stroke="#7ee787" stroke-width="2" filter="url(#glow2)"/>
+        <circle cx="160" cy="140" r="5" fill="rgba(210,168,255,0.15)" stroke="#d2a8ff" stroke-width="2" filter="url(#glow2)"/>
+        <circle cx="320" cy="160" r="6" fill="rgba(255,166,87,0.15)" stroke="#ffa657" stroke-width="2" filter="url(#glow2)"/>
+        <circle cx="80" cy="150" r="5" fill="rgba(88,166,255,0.1)" stroke="#58a6ff" stroke-width="1.5" filter="url(#glow2)"/>
+        <!-- Labels with glow -->
+        <text x="200" y="44" fill="#58a6ff" font-size="10" text-anchor="middle" style="text-shadow: 0 0 8px rgba(88,166,255,0.5);">auth-service</text>
+        <text x="280" y="86" fill="#7ee787" font-size="9" text-anchor="middle" style="text-shadow: 0 0 6px rgba(126,231,135,0.4);">redis</text>
+        <text x="160" y="156" fill="#d2a8ff" font-size="8" text-anchor="middle">TEC-1781</text>
+      </svg>
+    </div>
+    <div class="card-body" style="padding: 16px; background: rgba(13,17,23,0.8);">
+      <h3 style="color: #e6edf3; margin: 0 0 6px 0; font-size: 15px;">B: Vivid Neural</h3>
+      <p style="color: rgba(230,237,243,0.5); font-size: 12px; margin: 0;">Glowing nodes, pulsing edges, animated data flow. Particles travel along connections. The "brain is thinking" metaphor made visible. Demo-killer.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="hybrid" onclick="toggleSelect(this)" style="background: linear-gradient(135deg, #0a0a1a 0%, #0d1117 50%, #0a0a1a 100%); border: 1px solid rgba(88, 166, 255, 0.15); border-radius: 16px; overflow: hidden; cursor: pointer;">
+    <div class="card-image" style="height: 280px; position: relative; overflow: hidden;">
+      <!-- Hybrid: subtle base + vivid on interaction -->
+      <div style="position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 50%, rgba(88, 166, 255, 0.06) 0%, transparent 70%);">
+      </div>
+      <!-- Mock nav -->
+      <div style="padding: 12px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(88, 166, 255, 0.1);">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #58a6ff; box-shadow: 0 0 8px #58a6ff;"></div>
+        <span style="color: #e6edf3; font-size: 13px; font-weight: 600; letter-spacing: 1px;">MYCELIUM</span>
+        <div style="margin-left: auto; display: flex; gap: 16px;">
+          <span style="color: rgba(88,166,255,0.8); font-size: 11px;">GRAPH</span>
+          <span style="color: rgba(230,237,243,0.4); font-size: 11px;">AGENTS</span>
+          <span style="color: rgba(230,237,243,0.4); font-size: 11px;">LEARN</span>
+        </div>
+      </div>
+      <!-- Hybrid graph: mostly subtle, one cluster highlighted -->
+      <svg viewBox="0 0 400 200" style="width: 100%; padding: 10px;">
+        <defs>
+          <filter id="glow3">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <!-- Background cluster (subtle) -->
+        <line x1="60" y1="80" x2="100" y2="120" stroke="rgba(88,166,255,0.12)" stroke-width="1"/>
+        <line x1="100" y1="120" x2="60" y2="160" stroke="rgba(88,166,255,0.12)" stroke-width="1"/>
+        <circle cx="60" cy="80" r="4" fill="#0d1117" stroke="rgba(88,166,255,0.3)" stroke-width="1"/>
+        <circle cx="100" cy="120" r="3" fill="#0d1117" stroke="rgba(88,166,255,0.3)" stroke-width="1"/>
+        <circle cx="60" cy="160" r="3" fill="#0d1117" stroke="rgba(88,166,255,0.3)" stroke-width="1"/>
+        <!-- Active/hovered cluster (vivid) -->
+        <line x1="200" y1="60" x2="260" y2="90" stroke="#58a6ff" stroke-width="2" opacity="0.6" filter="url(#glow3)"/>
+        <line x1="200" y1="60" x2="180" y2="120" stroke="#58a6ff" stroke-width="1.5" opacity="0.5" filter="url(#glow3)"/>
+        <line x1="260" y1="90" x2="300" y2="140" stroke="#7ee787" stroke-width="1.5" opacity="0.5" filter="url(#glow3)"/>
+        <line x1="180" y1="120" x2="260" y2="90" stroke="rgba(210,168,255,0.4)" stroke-width="1" filter="url(#glow3)"/>
+        <circle cx="200" cy="60" r="9" fill="rgba(88,166,255,0.2)" stroke="#58a6ff" stroke-width="2" filter="url(#glow3)">
+          <animate attributeName="r" values="9;10;9" dur="2.5s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="260" cy="90" r="6" fill="rgba(126,231,135,0.15)" stroke="#7ee787" stroke-width="2" filter="url(#glow3)"/>
+        <circle cx="180" cy="120" r="5" fill="rgba(210,168,255,0.15)" stroke="#d2a8ff" stroke-width="2" filter="url(#glow3)"/>
+        <circle cx="300" cy="140" r="5" fill="rgba(255,166,87,0.15)" stroke="#ffa657" stroke-width="1.5" filter="url(#glow3)"/>
+        <!-- Labels only on active cluster -->
+        <text x="200" y="46" fill="#58a6ff" font-size="10" text-anchor="middle" style="text-shadow: 0 0 6px rgba(88,166,255,0.4);">auth-service</text>
+        <text x="260" y="78" fill="#7ee787" font-size="9" text-anchor="middle">redis</text>
+        <!-- Background cluster (right, subtle) -->
+        <line x1="340" y1="60" x2="360" y2="100" stroke="rgba(88,166,255,0.12)" stroke-width="1"/>
+        <circle cx="340" cy="60" r="3" fill="#0d1117" stroke="rgba(88,166,255,0.25)" stroke-width="1"/>
+        <circle cx="360" cy="100" r="3" fill="#0d1117" stroke="rgba(88,166,255,0.25)" stroke-width="1"/>
+        <!-- Tooltip mockup -->
+        <rect x="215" y="95" width="120" height="50" rx="6" fill="rgba(13,17,23,0.95)" stroke="rgba(88,166,255,0.3)" stroke-width="1"/>
+        <text x="225" y="112" fill="#e6edf3" font-size="9" font-weight="600">Backend Cortex</text>
+        <text x="225" y="125" fill="rgba(230,237,243,0.5)" font-size="8">L2 Meta-Agent</text>
+        <text x="225" y="137" fill="rgba(88,166,255,0.7)" font-size="8">3 children | 0.85 conf</text>
+      </svg>
+    </div>
+    <div class="card-body" style="padding: 16px; background: rgba(13,17,23,0.8);">
+      <h3 style="color: #e6edf3; margin: 0 0 6px 0; font-size: 15px;">C: Adaptive Hybrid</h3>
+      <p style="color: rgba(230,237,243,0.5); font-size: 12px; margin: 0;">Subtle at rest, vivid on interaction. Hovering a cluster lights it up. Active operations pulse. Resting state is clean. Best of both — calm for daily use, impressive when you need it.</p>
+    </div>
+  </div>
+</div>

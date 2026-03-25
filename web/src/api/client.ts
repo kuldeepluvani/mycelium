@@ -24,6 +24,7 @@ export const api = {
   ask: (query: string, mode = 'auto') => fetchJSON<any>('/api/ask', { method: 'POST', body: JSON.stringify({ query, mode }) }),
   askHistory: (limit = 20) => fetchJSON<any>(`/api/ask/history?limit=${limit}`),
   learnStart: (budget: number) => fetchJSON<any>(`/api/learn/start?budget=${budget}`, { method: 'POST' }),
+  learnCancel: () => fetchJSON<any>('/api/learn/cancel', { method: 'POST' }),
   learnSessions: (limit = 20) => fetchJSON<any>(`/api/learn/sessions?limit=${limit}`),
   learnSession: (id: string) => fetchJSON<any>(`/api/learn/sessions/${id}`),
   observeEvents: (limit = 100) => fetchJSON<any>(`/api/observe/events?limit=${limit}`),

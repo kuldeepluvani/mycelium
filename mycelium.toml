@@ -13,7 +13,7 @@ extensions = [".md"]
 ignore_patterns = [".obsidian/*", ".trash/*"]
 
 [connectors.git]
-enabled = true
+enabled = false
 base_path = "/Users/kuldeep.luvani/Documents/zefr_work/Github"
 include_repos = []
 exclude_repos = ["node_modules", "__pycache__", "delete_me", "delete-me"]
