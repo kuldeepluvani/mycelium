@@ -11,6 +11,7 @@ import { HierarchyTree } from './components/agents/HierarchyTree'
 import { SpilloverMap } from './components/agents/SpilloverMap'
 import { AskPage } from './components/ask/AskPage'
 import { ObservePage } from './components/observe/ObservePage'
+import { LearnPage } from './components/learn/LearnPage'
 
 type Tab = 'graph' | 'agents' | 'ask' | 'learn' | 'observe'
 
@@ -29,7 +30,7 @@ export default function App() {
         {tab === 'graph' && <GraphExplorerPage />}
         {tab === 'agents' && <AgentsPage />}
         {tab === 'ask' && <AskPage />}
-        {tab === 'learn' && <Placeholder label="Learn Dashboard" />}
+        {tab === 'learn' && <LearnPage />}
         {tab === 'observe' && <ObservePage />}
       </main>
     </div>
