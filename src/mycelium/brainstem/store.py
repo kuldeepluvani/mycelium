@@ -13,6 +13,7 @@ from mycelium.shared.models import Entity, Evidence, Relationship, TimeScope
 
 _MIGRATION_MODULES = [
     "mycelium.migrations.001_initial",
+    "mycelium.migrations.002_webui",
 ]
 
 
