@@ -39,6 +39,18 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
     # WebSocket clients list
     ws_clients: list[WebSocket] = []
 
+    # Log startup event
+    if orch:
+        orch.observation_store.log_event(
+            "system.startup", "api",
+            json_mod.dumps({"nodes": orch.graph.node_count(), "edges": orch.graph.edge_count(),
+                           "agents": len(orch.agent_manager.agents)}),
+            "system",
+        )
+        orch.observation_store.log_health("graph", "nodes", float(orch.graph.node_count()))
+        orch.observation_store.log_health("graph", "edges", float(orch.graph.edge_count()))
+        orch.observation_store.log_health("agents", "active", float(len(orch.agent_manager.get_active())))
+
     # -------------------------------------------------------------------------
     # Health + Status
     # -------------------------------------------------------------------------
@@ -224,6 +236,7 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
             ok = orch.agent_manager.unpin(agent_id)
         if not ok:
             raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+        orch.observation_store.log_event("agent.pin", agent_id, json_mod.dumps({"pinned": pinned}), "network")
         return {"ok": True, "agent_id": agent_id, "pinned": pinned}
 
     @app.put("/api/agents/{agent_id}/rename")
@@ -233,6 +246,7 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
         ok = orch.agent_manager.rename(agent_id, name)
         if not ok:
             raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+        orch.observation_store.log_event("agent.rename", agent_id, json_mod.dumps({"name": name}), "network")
         return {"ok": True, "agent_id": agent_id, "name": name}
 
     @app.put("/api/agents/{agent_id}/retire")
@@ -242,6 +256,7 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
         ok = orch.agent_manager.retire(agent_id)
         if not ok:
             raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+        orch.observation_store.log_event("agent.retire", agent_id, "{}", "network")
         return {"ok": True, "agent_id": agent_id}
 
     # -------------------------------------------------------------------------
@@ -259,6 +274,12 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
 
         await emitter.emit({"type": "ask.start", "query": req.query, "mode": req.mode})
 
+        # Log to observation store
+        orch.observation_store.log_event(
+            event_type="ask.start", subject=req.query[:100],
+            payload=json_mod.dumps({"query": req.query, "mode": req.mode}), module="serve",
+        )
+
         qr = await engine.ask(req.query, mode=req.mode)
 
         await emitter.emit({
@@ -267,22 +288,39 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
             "agents_used": qr.agents_used,
             "mode": qr.mode,
         })
+        orch.observation_store.log_event(
+            event_type="ask.done", subject=req.query[:100],
+            payload=json_mod.dumps({
+                "query": req.query, "mode": qr.mode,
+                "agents_used": qr.agents_used,
+                "coordinated_by": qr.coordinated_by,
+                "answer_length": len(qr.answer),
+            }), module="serve",
+        )
 
         # Save to query_history
         try:
+            from uuid import uuid4
             orch.store.execute(
-                "INSERT INTO query_history (query, answer, agents_used, mode, created_at) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO query_history (id, query, mode, route_meta_id, route_meta_name, "
+                "route_strategy, l1_agent_ids, l1_agent_names, answer, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
+                    str(uuid4()),
                     req.query,
-                    qr.answer,
-                    json_mod.dumps(qr.agents_used),
                     qr.mode,
+                    qr.route_meta_id,
+                    qr.coordinated_by,
+                    qr.route_strategy,
+                    json_mod.dumps(qr.l1_agent_ids),
+                    json_mod.dumps(qr.agents_used),
+                    qr.answer,
                     datetime.now(timezone.utc).isoformat(),
                 ),
             )
             orch.store.conn.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Failed to save query history: {e}")
 
         return {
             "answer": qr.answer,
@@ -300,10 +338,26 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
             return {"queries": []}
         try:
             rows = orch.store.execute(
-                f"SELECT * FROM query_history ORDER BY created_at DESC LIMIT {limit}"
+                "SELECT id, query, mode, route_meta_name, route_strategy, "
+                "l1_agent_names, answer, created_at "
+                "FROM query_history ORDER BY created_at DESC LIMIT ?",
+                (limit,),
             ).fetchall()
-            return {"queries": [dict(r) for r in rows]}
-        except Exception:
+            return {"queries": [
+                {
+                    "id": r["id"],
+                    "query": r["query"],
+                    "mode": r["mode"],
+                    "coordinated_by": r["route_meta_name"],
+                    "strategy": r["route_strategy"],
+                    "agents_used": json_mod.loads(r["l1_agent_names"]) if r["l1_agent_names"] else [],
+                    "answer": r["answer"],
+                    "created_at": r["created_at"],
+                }
+                for r in rows
+            ]}
+        except Exception as e:
+            print(f"Failed to load query history: {e}")
             return {"queries": []}
 
     # -------------------------------------------------------------------------

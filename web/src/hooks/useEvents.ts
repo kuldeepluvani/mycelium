@@ -59,9 +59,12 @@ export function useEvents() {
 
       if (eventsRes.status === 'fulfilled') {
         const raw = eventsRes.value
-        const list: MyceliumEvent[] = Array.isArray(raw)
-          ? raw
-          : raw?.events ?? []
+        const rawList = Array.isArray(raw) ? raw : raw?.events ?? []
+        // Parse payload JSON strings
+        const list: MyceliumEvent[] = rawList.map((e: any) => ({
+          ...e,
+          payload: typeof e.payload === 'string' ? (() => { try { return JSON.parse(e.payload) } catch { return { raw: e.payload } } })() : e.payload,
+        }))
         // Newest first
         setEvents([...list].reverse())
       }
@@ -70,7 +73,7 @@ export function useEvents() {
         const raw = healthRes.value
         const list: HealthMetric[] = Array.isArray(raw)
           ? raw
-          : raw?.health ?? raw?.modules ?? []
+          : raw?.metrics ?? raw?.health ?? raw?.modules ?? []
         setHealthMetrics(list)
       }
     } finally {

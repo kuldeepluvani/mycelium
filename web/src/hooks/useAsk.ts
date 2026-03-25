@@ -47,7 +47,18 @@ export function useAsk() {
   const fetchHistory = useCallback(async () => {
     try {
       const res = await api.askHistory()
-      setHistory(res?.queries ?? [])
+      const items: HistoryItem[] = (res?.queries ?? []).map((q: any) => ({
+        query: q.query,
+        mode: q.mode || 'auto',
+        result: {
+          answer: q.answer || '',
+          agents_used: q.agents_used || [],
+          coordinated_by: q.coordinated_by,
+          mode: q.mode || '',
+        } as AskResult,
+        timestamp: q.created_at || '',
+      }))
+      setHistory(items)
     } catch {
       // history is best-effort
     }
