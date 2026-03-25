@@ -12,7 +12,7 @@ export interface AskResult {
   route_strategy?: string
   l1_agent_ids?: string[]
   mentioned_entities?: string[]
-  rationale?: string
+  rationale?: string[] | string
   unknowns?: string[]
   follow_ups?: string[]
 }

@@ -33,8 +33,8 @@ export function ResponsePanel({ result, onFollowUp }: ResponsePanelProps) {
         >
           Answer
         </div>
-        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
-          {result.answer}
+        <p className="text-sm leading-relaxed" style={{ color: result.answer ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+          {result.answer || 'No answer generated. Claude CLI may not be responding — check the Claude status indicator above.'}
         </p>
       </div>
 
@@ -56,7 +56,7 @@ export function ResponsePanel({ result, onFollowUp }: ResponsePanelProps) {
       )}
 
       {/* Rationale */}
-      {result.rationale && (
+      {result.rationale && (Array.isArray(result.rationale) ? result.rationale.length > 0 : !!result.rationale) && (
         <div className="glass-panel p-5">
           <div
             className="text-xs font-medium mb-3"
@@ -65,10 +65,10 @@ export function ResponsePanel({ result, onFollowUp }: ResponsePanelProps) {
             Rationale
           </div>
           <ul className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>
-            {result.rationale.split('\n').filter(Boolean).map((line, i) => (
+            {(Array.isArray(result.rationale) ? result.rationale : String(result.rationale).split('\n').filter(Boolean)).map((line, i) => (
               <li key={i} className="flex gap-2">
                 <span style={{ color: 'var(--accent-blue)', flexShrink: 0 }}>•</span>
-                <span>{line.replace(/^[-•]\s*/, '')}</span>
+                <span>{String(line).replace(/^[-•]\s*/, '')}</span>
               </li>
             ))}
           </ul>
