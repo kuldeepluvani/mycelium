@@ -93,3 +93,15 @@ def test_pin_prevents_retirement():
     # Retirement should be blocked
     assert manager.retire("agent-pin") is False
     assert agent.status == "active"
+
+
+def test_unpin_agent():
+    llm = MagicMock()
+    manager = AgentManager(llm=llm)
+
+    agent = Agent(id="a1", name="Test", domain="test", status="active", pinned=True)
+    manager._agents["a1"] = agent
+
+    assert manager.unpin("a1") is True
+    assert agent.pinned is False
+    assert manager.unpin("nonexistent") is False

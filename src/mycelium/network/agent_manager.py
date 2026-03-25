@@ -5,6 +5,8 @@ from mycelium.shared.llm import ClaudeCLI
 from mycelium.brainstem.graph import KnowledgeGraph
 from mycelium.network.agent import Agent
 from mycelium.network.cluster import ClusterInfo
+from mycelium.network.hierarchy_builder import HierarchyBuilder
+from mycelium.network.meta_agent import MetaAgent
 
 AGENT_NAME_PROMPT = """These entities form a knowledge cluster:
 {entities}
@@ -22,6 +24,8 @@ class AgentManager:
         self._llm = llm
         self._stability_cycles = stability_cycles
         self._agents: dict[str, Agent] = {}
+        self._hierarchy_builder = HierarchyBuilder(llm=llm, min_group_size=2)
+        self._meta_agents: dict[str, MetaAgent] = {}
 
     @property
     def agents(self) -> list[Agent]:
@@ -32,6 +36,9 @@ class AgentManager:
 
     def get_active(self) -> list[Agent]:
         return [a for a in self._agents.values() if a.status in ("active", "mature")]
+
+    def get_meta_agents(self) -> list[MetaAgent]:
+        return list(self._meta_agents.values())
 
     async def process_clusters(
         self, clusters: list[ClusterInfo], graph: KnowledgeGraph
@@ -89,6 +96,12 @@ class AgentManager:
                         break
                 if not found_in_clusters and agent.status != "candidate":
                     agent.status = "retired"
+
+        # Build L2 hierarchy from active L1 agents
+        active_l1 = self.get_active()
+        if len(active_l1) >= 2:
+            metas = await self._hierarchy_builder.build(active_l1, graph)
+            self._meta_agents = {m.id: m for m in metas}
 
         return new_agents
 
@@ -161,6 +174,13 @@ class AgentManager:
         agent = self._agents.get(agent_id)
         if agent:
             agent.pinned = True
+            return True
+        return False
+
+    def unpin(self, agent_id: str) -> bool:
+        agent = self._agents.get(agent_id)
+        if agent:
+            agent.pinned = False
             return True
         return False
 
