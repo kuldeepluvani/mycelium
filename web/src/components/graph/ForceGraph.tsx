@@ -98,6 +98,68 @@ export function ForceGraph({ nodes, edges, selectedNodeId, onSelectNode, agentMa
 
     simulationRef.current = simulation
 
+    // Agent cluster boundaries (enclosing circles)
+    const clusterColors = ['#58a6ff', '#7ee787', '#d2a8ff', '#ffa657', '#f778ba', '#79c0ff', '#ff7b72']
+    const agentGroups: { agentName: string; nodeIds: Set<string>; color: string }[] = []
+    if (agentMap && agentMap.size > 0) {
+      const agentToNodes = new Map<string, Set<string>>()
+      agentMap.forEach((agentName, nodeId) => {
+        if (!agentToNodes.has(agentName)) agentToNodes.set(agentName, new Set())
+        agentToNodes.get(agentName)!.add(nodeId)
+      })
+      let colorIdx = 0
+      agentToNodes.forEach((nodeIds, agentName) => {
+        if (nodeIds.size >= 2) {
+          agentGroups.push({ agentName, nodeIds, color: clusterColors[colorIdx % clusterColors.length] })
+          colorIdx++
+        }
+      })
+    }
+
+    const hullGroup = g.append('g').attr('class', 'hulls')
+
+    function updateHulls() {
+      hullGroup.selectAll('*').remove()
+      for (const group of agentGroups) {
+        const points: { x: number; y: number }[] = []
+        simNodes.forEach(n => {
+          if (group.nodeIds.has(n.id) && n.x != null && n.y != null) {
+            points.push({ x: n.x, y: n.y })
+          }
+        })
+        if (points.length < 2) continue
+
+        // Compute enclosing circle (centroid + radius to farthest node + padding)
+        const cx = d3.mean(points, d => d.x) || 0
+        const cy = d3.mean(points, d => d.y) || 0
+        const maxDist = d3.max(points, d => Math.sqrt((d.x - cx) ** 2 + (d.y - cy) ** 2)) || 0
+        const radius = maxDist + 30 // 30px padding
+
+        // Circle boundary
+        hullGroup.append('circle')
+          .attr('cx', cx)
+          .attr('cy', cy)
+          .attr('r', radius)
+          .attr('fill', `${group.color}06`)
+          .attr('stroke', `${group.color}20`)
+          .attr('stroke-width', 1.5)
+          .attr('stroke-dasharray', '8,4')
+          .style('pointer-events', 'none')
+
+        // Agent name label at top of circle
+        hullGroup.append('text')
+          .attr('x', cx)
+          .attr('y', cy - radius - 6)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '9px')
+          .attr('fill', `${group.color}70`)
+          .attr('font-weight', '600')
+          .attr('letter-spacing', '0.5px')
+          .style('pointer-events', 'none')
+          .text(group.agentName)
+      }
+    }
+
     // Edges
     const link = g
       .append('g')
@@ -255,13 +317,14 @@ export function ForceGraph({ nodes, edges, selectedNodeId, onSelectNode, agentMa
         .attr('y2', (d) => (d.target as SimNode).y ?? 0)
 
       node.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
+      updateHulls()
     })
 
     // Subtle ambient animation: after simulation cools, keep a tiny alpha alive
     simulation.on('end', () => {
       simulation.alpha(0.005).restart()
     })
-  }, [nodes, edges, selectedNodeId, onSelectNode])
+  }, [nodes, edges, selectedNodeId, onSelectNode, agentMap])
 
   useEffect(() => {
     buildGraph()
