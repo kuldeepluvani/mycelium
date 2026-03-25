@@ -94,6 +94,13 @@ class Orchestrator:
         self.session_store = SessionStore(str(obs_db_path))
         self.observation_store = ObservationStore(obs_db_path)
 
+        # Clean up all stale "running" sessions from previous crashes
+        for s in self.session_store.list_sessions():
+            if s.status == "running":
+                s.status = "interrupted"
+                s.completed_at = datetime.now(timezone.utc)
+                self.session_store.save(s)
+
         # Rebuild graph and agents from store
         self._rebuild_graph()
         self._load_agents()
