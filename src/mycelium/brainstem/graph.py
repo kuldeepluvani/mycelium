@@ -86,3 +86,11 @@ class KnowledgeGraph:
 
     def all_entity_ids(self) -> list[str]:
         return list(self._graph.nodes())
+
+    def all_relationships(self) -> list[Relationship]:
+        """Return all relationships in the graph."""
+        return [
+            data["data"]
+            for _, _, data in self._graph.edges(data=True)
+            if data.get("data")
+        ]

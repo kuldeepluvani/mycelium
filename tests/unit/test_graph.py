@@ -95,3 +95,25 @@ def test_rebuild(graph):
     graph.rebuild_from_entities_and_relationships(entities, rels)
     assert graph.node_count() == 2
     assert graph.edge_count() == 1
+
+
+def test_all_relationships():
+    from mycelium.brainstem.graph import KnowledgeGraph
+    from mycelium.shared.models import Entity, Relationship
+    g = KnowledgeGraph()
+    e1 = Entity(id="e1", name="A", canonical_name="A", entity_class="service")
+    e2 = Entity(id="e2", name="B", canonical_name="B", entity_class="service")
+    g.add_entity(e1)
+    g.add_entity(e2)
+    rel = Relationship(id="r1", source_id="e1", target_id="e2", rel_type="depends_on", rel_category="structural")
+    g.add_relationship(rel)
+    rels = g.all_relationships()
+    assert isinstance(rels, list)
+    assert len(rels) == 1
+    assert rels[0].id == "r1"
+
+
+def test_all_relationships_empty():
+    from mycelium.brainstem.graph import KnowledgeGraph
+    g = KnowledgeGraph()
+    assert g.all_relationships() == []
