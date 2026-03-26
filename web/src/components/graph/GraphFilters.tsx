@@ -22,6 +22,7 @@ export function GraphFilters({
   setConfidenceRange,
 }: GraphFiltersProps) {
   const [collapsed, setCollapsed] = useState(false)
+  const [typesOpen, setTypesOpen] = useState(false)
 
   const classCounts = useMemo(() => {
     const counts = new Map<string, number>()
@@ -101,8 +102,23 @@ export function GraphFilters({
 
           {/* Entity classes */}
           <div>
-            <SectionLabel>Entity Types</SectionLabel>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+            <button
+              onClick={() => setTypesOpen(o => !o)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: '100%', background: 'none', border: 'none', padding: 0,
+                cursor: 'pointer', color: 'var(--text-muted)',
+              }}
+            >
+              <SectionLabel>Entity Types ({classCounts.length})</SectionLabel>
+              <span style={{ fontSize: 10, transition: 'transform 200ms', transform: typesOpen ? 'rotate(180deg)' : 'rotate(0)' }}>▼</span>
+            </button>
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8,
+              maxHeight: typesOpen ? '2000px' : '0px',
+              overflow: 'hidden',
+              transition: 'max-height 300ms ease',
+            }}>
               {classCounts.map(([cls, count]) => {
                 const color = getEntityColor(cls)
                 const active = entityClassFilter.has(cls)
