@@ -69,6 +69,40 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
         except Exception as e:
             return {"available": False, "error": str(e)}
 
+    @app.get("/api/coverage")
+    async def coverage():
+        """Knowledge coverage stats — how much of the vault has been ingested."""
+        if not orch:
+            return {"total_sources": 0, "ingested_sources": 0, "coverage_pct": 0, "entities": 0, "relationships": 0}
+        # Count total vault files
+        total_sources = 0
+        for connector in orch.connector_registry.all():
+            try:
+                changes = await connector.discover_changes()
+                total_sources += len(changes)
+            except Exception:
+                pass
+        # Count ingested entities with provenance
+        entities = orch.graph.node_count()
+        relationships = orch.graph.edge_count()
+        # Unique source docs from entity provenance
+        ingested_sources = set()
+        for eid in orch.graph.all_entity_ids():
+            e = orch.graph.get_entity(eid)
+            if e and e.provenance:
+                for p in e.provenance:
+                    ingested_sources.add(p)
+        ingested = len(ingested_sources)
+        coverage_pct = round((ingested / max(total_sources, 1)) * 100, 1)
+        return {
+            "total_sources": total_sources,
+            "ingested_sources": ingested,
+            "coverage_pct": coverage_pct,
+            "entities": entities,
+            "relationships": relationships,
+            "agents": len(orch.agent_manager.get_active()),
+        }
+
     @app.get("/api/status")
     async def api_status():
         if not orch:

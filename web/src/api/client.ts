@@ -11,6 +11,7 @@ export async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T>
 
 export const api = {
   status: () => fetchJSON<any>('/api/status'),
+  coverage: () => fetchJSON<any>('/api/coverage'),
   claudeHealth: () => fetchJSON<{ available: boolean; error?: string }>('/api/claude/health'),
   graphNodes: () => fetchJSON<{ nodes: any[] }>('/api/graph/nodes'),
   graphEdges: () => fetchJSON<{ edges: any[] }>('/api/graph/edges'),
