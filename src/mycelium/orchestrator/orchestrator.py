@@ -73,8 +73,10 @@ class Orchestrator:
 
         # Network — adaptive thresholds based on graph size
         # For smaller graphs (<200 nodes), relax thresholds to allow discovery
-        adaptive_min_size = max(5, config.network.min_cluster_size // 2) if True else config.network.min_cluster_size
-        adaptive_coherence = min(config.network.min_coherence, 0.15)
+        # Lower thresholds for smaller graphs to maximize node coverage
+        node_count = 0  # unknown at init, will be set after rebuild
+        adaptive_min_size = max(3, config.network.min_cluster_size // 3)
+        adaptive_coherence = min(config.network.min_coherence, 0.1)
         self.cluster_engine = ClusterEngine(
             min_cluster_size=adaptive_min_size,
             min_coherence=adaptive_coherence,
@@ -183,7 +185,10 @@ class Orchestrator:
                 )
             self.store.conn.commit()
 
-        # Save L2 meta-agents
+        # Save L2 meta-agents — clear old ones first to prevent duplicates
+        self.store.execute("DELETE FROM meta_agent_children")
+        self.store.execute("DELETE FROM meta_agents")
+        self.store.conn.commit()
         for meta in self.agent_manager.get_meta_agents():
             self.store.upsert_meta_agent(meta)
 

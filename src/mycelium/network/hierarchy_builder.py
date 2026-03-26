@@ -77,7 +77,7 @@ class HierarchyBuilder:
                 if not a_ents or not b_ents:
                     continue
                 overlap = len(a_ents & b_ents) / len(a_ents | b_ents)
-                if overlap > 0.3:
+                if overlap > 0.15:  # Lower threshold to group more agents
                     group.append(other)
                     assigned.add(other.id)
 
