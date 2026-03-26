@@ -37,7 +37,8 @@ class VaultConnector(BaseConnector):
                 return True
         return False
 
-    async def discover_changes(self, since: datetime | None = None) -> list[ChangeSet]:
+    async def discover_changes(self, since: datetime | None = None, **kwargs) -> list[ChangeSet]:
+        known_hashes = kwargs.get("known_hashes")
         changes: list[ChangeSet] = []
         for root, _dirs, files in os.walk(self.vault_path):
             for fname in files:
@@ -50,6 +51,14 @@ class VaultConnector(BaseConnector):
                 mtime = datetime.fromtimestamp(full.stat().st_mtime, tz=timezone.utc)
                 if since is not None and mtime <= since:
                     continue
+
+                # Content-hash check: skip if content hasn't changed
+                if known_hashes is not None:
+                    content_hash = hashlib.sha256(full.read_bytes()).hexdigest()
+                    stored_hash = known_hashes.get_document_hash(str(full))
+                    if stored_hash == content_hash:
+                        continue
+
                 changes.append(
                     ChangeSet(
                         source="vault",

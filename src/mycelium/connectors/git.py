@@ -54,7 +54,7 @@ class GitConnector(BaseConnector):
         repos.sort(key=lambda p: p.stat().st_mtime, reverse=True)
         return repos[: self.max_repos_per_cycle]
 
-    async def discover_changes(self, since: datetime | None = None) -> list[ChangeSet]:
+    async def discover_changes(self, since: datetime | None = None, **kwargs) -> list[ChangeSet]:
         if since is None:
             since = datetime.now(timezone.utc) - timedelta(days=self.commit_lookback_days)
         changes: list[ChangeSet] = []

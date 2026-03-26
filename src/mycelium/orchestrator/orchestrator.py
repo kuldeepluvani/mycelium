@@ -209,7 +209,7 @@ class Orchestrator:
         all_changesets = []
         for connector in self.connector_registry.all():
             try:
-                changes = await connector.discover_changes()
+                changes = await connector.discover_changes(known_hashes=self.store)
                 all_changesets.extend(changes)
             except Exception as e:
                 session.documents_remaining.append(f"error:{connector.source_type()}:{e}")
@@ -243,6 +243,10 @@ class Orchestrator:
             session.edges_created = stats.relationships_created
             session.documents_processed = [d.path for d in docs_to_process]
             session.spent = stats.total_call_cost
+
+            # Save content hashes for processed documents
+            for doc in docs_to_process:
+                self.store.save_document_hash(doc.path, doc.content_hash)
 
         # Apply confidence decay to all entities
         for eid in self.graph.all_entity_ids():

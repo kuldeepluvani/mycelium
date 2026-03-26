@@ -9,7 +9,7 @@ from mycelium.shared.models import ChangeSet, Document
 
 class BaseConnector(ABC):
     @abstractmethod
-    async def discover_changes(self, since: datetime | None = None) -> list[ChangeSet]:
+    async def discover_changes(self, since: datetime | None = None, **kwargs) -> list[ChangeSet]:
         """Discover documents changed since given timestamp."""
         ...
 

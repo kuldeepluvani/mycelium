@@ -14,6 +14,7 @@ from mycelium.shared.models import Entity, Evidence, Relationship, TimeScope
 _MIGRATION_MODULES = [
     "mycelium.migrations.001_initial",
     "mycelium.migrations.002_webui",
+    "mycelium.migrations.003_quality",
 ]
 
 
@@ -339,3 +340,22 @@ class BrainstemStore:
                 created_at=datetime.fromisoformat(r["created_at"]) if r["created_at"] else datetime.now(),
             ))
         return metas
+
+    # ── document hash CRUD ────────────────────────────────────────────────
+
+    def get_document_hash(self, path: str) -> str | None:
+        """Return stored content hash for a document path, or None if never processed."""
+        assert self.conn is not None
+        row = self.conn.execute(
+            "SELECT content_hash FROM document_hashes WHERE path = ?", (path,)
+        ).fetchone()
+        return row["content_hash"] if row else None
+
+    def save_document_hash(self, path: str, content_hash: str) -> None:
+        """Store the content hash after processing a document."""
+        assert self.conn is not None
+        self.conn.execute(
+            "INSERT OR REPLACE INTO document_hashes (path, content_hash, last_processed) VALUES (?, ?, ?)",
+            (path, content_hash, datetime.now(timezone.utc).isoformat()),
+        )
+        self.conn.commit()
