@@ -47,32 +47,68 @@ class ExtractionResult:
 
 
 class DeepExtractor:
-    def __init__(self, llm: ClaudeCLI):
+    def __init__(self, llm: ClaudeCLI, chunk_size: int = 3000, chunk_overlap: int = 500):
         self._llm = llm
+        self._chunk_size = chunk_size
+        self._chunk_overlap = chunk_overlap
 
-    async def extract(self, document: Document, anchors: StructuralResult) -> ExtractionResult:
-        anchor_text = "\n".join(f"- {name} ({cls})" for name, cls in anchors.anchors.items())
-        if not anchor_text:
+    def _chunk_content(self, content: str) -> list[str]:
+        """Split content into overlapping chunks. Returns full content if within chunk_size."""
+        if len(content) <= self._chunk_size:
+            return [content]
+        chunks = []
+        start = 0
+        while start < len(content):
+            end = start + self._chunk_size
+            chunk = content[start:end]
+            chunks.append(chunk)
+            start = end - self._chunk_overlap
+            if start >= len(content):
+                break
+        return chunks
+
+    async def extract(self, document: Document, structural_result: StructuralResult | None = None) -> ExtractionResult:
+        # Build anchor text from structural result
+        if structural_result is not None and structural_result.anchors:
+            anchor_text = "\n".join(f"- {name} ({cls})" for name, cls in structural_result.anchors.items())
+        else:
             anchor_text = "(none found)"
 
-        # Truncate content for prompt
-        content = document.content[:3000]
+        chunks = self._chunk_content(document.content)
 
-        prompt = EXTRACTION_PROMPT.format(
-            path=document.path,
-            source=document.source,
-            anchors=anchor_text,
-            content=content,
-        )
+        all_entities: list[dict] = []
+        all_relationships: list[dict] = []
+        all_claims: list[dict] = []
+        seen_entity_names: set[str] = set()
+        total_cost = 0
 
-        result = await self._llm.generate_json(prompt, system=EXTRACTION_SYSTEM)
+        for chunk in chunks:
+            prompt = EXTRACTION_PROMPT.format(
+                path=document.path,
+                source=document.source,
+                anchors=anchor_text,
+                content=chunk,
+            )
 
-        if result is None:
-            return ExtractionResult(call_cost=1)
+            result = await self._llm.generate_json(prompt, system=EXTRACTION_SYSTEM)
+            total_cost += 1
+
+            if result is None:
+                continue
+
+            # Deduplicate entities by lowercased name
+            for entity in result.get("entities", []):
+                name = entity.get("name", "")
+                if name.lower() not in seen_entity_names:
+                    seen_entity_names.add(name.lower())
+                    all_entities.append(entity)
+
+            all_relationships.extend(result.get("relationships", []))
+            all_claims.extend(result.get("claims", []))
 
         return ExtractionResult(
-            entities=result.get("entities", []),
-            relationships=result.get("relationships", []),
-            claims=result.get("claims", []),
-            call_cost=1,
+            entities=all_entities,
+            relationships=all_relationships,
+            claims=all_claims,
+            call_cost=total_cost,
         )

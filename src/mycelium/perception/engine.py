@@ -58,7 +58,11 @@ class PerceptionEngine:
 
         # Initialize sub-components
         self._structural = StructuralParser()
-        self._extractor = DeepExtractor(llm)
+        self._extractor = DeepExtractor(
+            llm,
+            chunk_size=self._config.chunk_size,
+            chunk_overlap=self._config.chunk_overlap,
+        )
         self._challenger = AdversarialChallenger(
             llm, challenge_skip_anchor_ratio=self._config.challenge_skip_anchor_ratio
         )
