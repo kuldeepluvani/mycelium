@@ -15,6 +15,11 @@ class AskRequest(BaseModel):
     mode: str = "auto"
 
 
+class FeedbackRequest(BaseModel):
+    entity_ids: list[str] = []
+    relationship_ids: list[str] = []
+
+
 def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -> FastAPI:
     app = FastAPI(title="Mycelium", version="0.1.0")
 
@@ -304,6 +309,38 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
         return {"ok": True, "agent_id": agent_id}
 
     # -------------------------------------------------------------------------
+    # Feedback
+    # -------------------------------------------------------------------------
+
+    @app.post("/api/feedback/accept")
+    async def feedback_accept(req: FeedbackRequest):
+        if not orch:
+            raise HTTPException(status_code=503, detail="Orchestrator not available")
+        from mycelium.serve.feedback import FeedbackLoop
+        fb = FeedbackLoop(store=orch.store)
+        count = fb.record_acceptance(entity_ids=req.entity_ids, relationship_ids=req.relationship_ids)
+        orch.observation_store.log_event(
+            "feedback.accept", "user",
+            json_mod.dumps({"entity_ids": req.entity_ids, "relationship_ids": req.relationship_ids}),
+            "serve",
+        )
+        return {"ok": True, "queued": count}
+
+    @app.post("/api/feedback/correct")
+    async def feedback_correct(req: FeedbackRequest):
+        if not orch:
+            raise HTTPException(status_code=503, detail="Orchestrator not available")
+        from mycelium.serve.feedback import FeedbackLoop
+        fb = FeedbackLoop(store=orch.store)
+        count = fb.record_correction(entity_ids=req.entity_ids, relationship_ids=req.relationship_ids)
+        orch.observation_store.log_event(
+            "feedback.correct", "user",
+            json_mod.dumps({"entity_ids": req.entity_ids, "relationship_ids": req.relationship_ids}),
+            "serve",
+        )
+        return {"ok": True, "queued": count}
+
+    # -------------------------------------------------------------------------
     # Ask
     # -------------------------------------------------------------------------
 
@@ -374,6 +411,8 @@ def create_app(orch=None, host: str = "127.0.0.1", api_key: str | None = None) -
             "rationale": qr.rationale,
             "unknowns": qr.unknowns,
             "follow_ups": qr.follow_ups,
+            "entity_ids": qr.mentioned_entity_ids,
+            "relationship_ids": qr.mentioned_relationship_ids,
         }
 
     @app.get("/api/ask/history")

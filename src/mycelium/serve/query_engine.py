@@ -16,6 +16,8 @@ class QueryResult:
     route_strategy: str | None = None
     l1_agent_ids: list[str] = field(default_factory=list)
     mentioned_entities: list[str] = field(default_factory=list)
+    mentioned_entity_ids: list[str] = field(default_factory=list)
+    mentioned_relationship_ids: list[str] = field(default_factory=list)
 
 
 class QueryEngine:
@@ -51,6 +53,14 @@ class QueryEngine:
             resp.l1_responses[0].response if resp.l1_responses else "No agents could answer."
         )
 
+        entity_ids = []
+        for name in intent.mentioned_entities:
+            for eid in self._orch.graph.all_entity_ids():
+                e = self._orch.graph.get_entity(eid)
+                if e and e.name.lower() == name.lower():
+                    entity_ids.append(eid)
+                    break
+
         return QueryResult(
             answer=answer,
             agents_used=[r.agent_name for r in resp.l1_responses if r.success],
@@ -60,6 +70,7 @@ class QueryEngine:
             route_strategy=route.strategy.mode,
             l1_agent_ids=route.strategy.target_ids or route.fallback_agent_ids,
             mentioned_entities=intent.mentioned_entities,
+            mentioned_entity_ids=entity_ids,
         )
 
     async def _ask_flat(self, query, intent) -> QueryResult:
@@ -86,6 +97,14 @@ class QueryEngine:
         synthesizer = Synthesizer(self._orch._llm)
         result = await synthesizer.synthesize(query, responses)
 
+        entity_ids = []
+        for name in intent.mentioned_entities:
+            for eid in self._orch.graph.all_entity_ids():
+                e = self._orch.graph.get_entity(eid)
+                if e and e.name.lower() == name.lower():
+                    entity_ids.append(eid)
+                    break
+
         return QueryResult(
             answer=result.answer,
             rationale=result.rationale_chain,
@@ -95,4 +114,5 @@ class QueryEngine:
             mode="flat",
             l1_agent_ids=[a.agent_id for a in agents],
             mentioned_entities=intent.mentioned_entities,
+            mentioned_entity_ids=entity_ids,
         )
