@@ -81,6 +81,82 @@ class EntityResolver:
         # No match — create new
         return ResolutionResult(action="create", entity_name=name, reason="no_match")
 
+    def batch_find_duplicates(self) -> list[tuple[str, str]]:
+        """Scan all entities for duplicates by name/alias match. Returns list of (keep_id, merge_id) pairs."""
+        entities = {}
+        for eid in self._graph.all_entity_ids():
+            e = self._graph.get_entity(eid)
+            if e and not e.archived and not e.quarantined:
+                entities[eid] = e
+
+        # Build name → entity_id index
+        name_index: dict[str, list[str]] = {}
+        for eid, e in entities.items():
+            key = e.canonical_name.lower().strip()
+            name_index.setdefault(key, []).append(eid)
+            for alias in e.aliases:
+                alias_key = alias.lower().strip()
+                name_index.setdefault(alias_key, []).append(eid)
+
+        # Find groups with >1 entity
+        seen_pairs: set[tuple[str, str]] = set()
+        merge_pairs: list[tuple[str, str]] = []
+        for key, eids in name_index.items():
+            unique_ids = list(set(eids))
+            if len(unique_ids) < 2:
+                continue
+            # Pick the one with highest confidence as survivor
+            unique_ids.sort(key=lambda eid: entities[eid].confidence, reverse=True)
+            for i in range(1, len(unique_ids)):
+                pair = (unique_ids[0], unique_ids[i])
+                pair_key = tuple(sorted(pair))
+                if pair_key not in seen_pairs:
+                    seen_pairs.add(pair_key)
+                    merge_pairs.append(pair)
+
+        return merge_pairs
+
+    def merge_entities(self, keep_id: str, remove_id: str, store=None):
+        """Merge remove_id into keep_id. Combines provenance, keeps higher confidence, transfers edges."""
+        keeper = self._graph.get_entity(keep_id)
+        removed = self._graph.get_entity(remove_id)
+        if not keeper or not removed:
+            return None
+
+        # Combine provenance
+        combined_prov = list(set(keeper.provenance + removed.provenance))
+        keeper.provenance = combined_prov
+
+        # Keep higher confidence
+        keeper.confidence = max(keeper.confidence, removed.confidence)
+
+        # Combine aliases
+        combined_aliases = list(set(keeper.aliases + removed.aliases + [removed.name]))
+        keeper.aliases = combined_aliases
+
+        # Transfer relationships from removed to keeper
+        for rel in list(self._graph.all_relationships()):
+            if rel.source_id == remove_id:
+                rel.source_id = keep_id
+                if store:
+                    store.upsert_relationship(rel)
+            elif rel.target_id == remove_id:
+                rel.target_id = keep_id
+                if store:
+                    store.upsert_relationship(rel)
+
+        # Remove the duplicate
+        self._graph.remove_entity(remove_id)
+        if store:
+            store.execute("UPDATE entities SET archived = 1 WHERE id = ?", (remove_id,))
+            store.conn.commit()
+            store.upsert_entity(keeper)
+
+        # Update in-memory graph
+        self._graph.add_entity(keeper)
+
+        return keeper
+
     async def resolve_batch(self, entities: list[dict]) -> list[ResolutionResult]:
         """Resolve a batch of entities."""
         results = []

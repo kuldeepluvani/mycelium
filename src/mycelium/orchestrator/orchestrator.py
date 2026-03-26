@@ -17,6 +17,7 @@ from mycelium.orchestrator.quota import QuotaTracker
 from mycelium.orchestrator.priority import PriorityScorer
 from mycelium.orchestrator.session import SessionStore, LearnSession
 from mycelium.perception.engine import PerceptionEngine
+from mycelium.perception.entity_resolver import EntityResolver
 from mycelium.network.cluster import ClusterEngine
 from mycelium.network.agent_manager import AgentManager
 from mycelium.network.spillover import SpilloverEngine
@@ -266,6 +267,12 @@ class Orchestrator:
         # Apply pending user feedback (boosts/penalties)
         feedback = FeedbackLoop(store=self.store)
         applied = feedback.apply_pending(self.store, self.graph, self.decay)
+
+        # Batch dedup pass — merge duplicate entities
+        resolver = EntityResolver(self.graph, self.embeddings, self._llm)
+        merge_pairs = resolver.batch_find_duplicates()
+        for keep_id, remove_id in merge_pairs:
+            resolver.merge_entities(keep_id, remove_id, store=self.store)
 
         # Agent discovery (if graph big enough)
         if self.graph.node_count() >= self.config.network.min_graph_nodes_for_discovery:
