@@ -123,10 +123,24 @@ class AgentManager:
         result = await self._llm.generate_json(prompt)
 
         if not result:
+            # Derive name from top entities in the cluster
+            top_names = []
+            top_classes = set()
+            for nid in cluster.node_ids[:5]:
+                e = graph.get_entity(nid)
+                if e:
+                    top_names.append(e.name)
+                    if e.entity_class and e.entity_class != "unknown":
+                        top_classes.add(e.entity_class)
+
+            derived_name = " & ".join(top_names[:3]) + " Specialist" if top_names else f"Agent {cluster.cluster_id}"
+            derived_domain = ", ".join(sorted(top_classes)) if top_classes else "general"
+
             return Agent(
                 id=f"agent-{uuid4().hex[:8]}",
-                name=f"Agent {cluster.cluster_id}",
-                domain="unknown",
+                name=derived_name,
+                domain=derived_domain,
+                description=f"Specialist covering: {', '.join(top_names[:5])}",
                 seed_nodes=cluster.node_ids[:10],
                 node_ids=cluster.node_ids,
             )

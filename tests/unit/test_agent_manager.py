@@ -105,3 +105,30 @@ def test_unpin_agent():
     assert manager.unpin("a1") is True
     assert agent.pinned is False
     assert manager.unpin("nonexistent") is False
+
+
+@pytest.mark.asyncio
+async def test_agent_naming_fallback_uses_entity_names():
+    """When LLM returns None, agent name should derive from top entities."""
+    llm = MagicMock()
+    llm.generate_json = AsyncMock(return_value=None)  # LLM fails
+
+    graph = KnowledgeGraph()
+    for name in ["Redis", "PostgreSQL", "MongoDB"]:
+        graph.add_entity(Entity(
+            id=f"e-{name.lower()}", name=name, canonical_name=name,
+            entity_class="infra", confidence=0.7,
+        ))
+
+    mgr = AgentManager(llm=llm, stability_cycles=1)
+    cluster = ClusterInfo(
+        cluster_id="cluster-99",
+        node_ids=["e-redis", "e-postgresql", "e-mongodb"],
+        size=3, coherence=0.5,
+    )
+    agent = await mgr._create_agent(cluster, graph)
+
+    assert agent is not None
+    assert "Redis" in agent.name
+    assert "cluster" not in agent.name.lower()
+    assert agent.domain != "unknown"
