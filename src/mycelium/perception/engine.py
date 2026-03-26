@@ -106,6 +106,25 @@ class PerceptionEngine:
             quarantined_names = set(reconcile.quarantined_entities)
             rejected_names = set(reconcile.rejected_entities)
 
+            # Build confidence map: entity_name -> confidence score
+            confidence_map: dict[str, float] = {}
+
+            # Default for skipped challenge (first cycle / high anchor ratio)
+            skip_default = 0.70 if challenge.skipped else 0.50
+
+            # From challenge verdicts — but ONLY if challenge was actually run
+            # When skipped, challenger auto-generates CONFIRMED verdicts which are meaningless
+            if not challenge.skipped:
+                VERDICT_CONFIDENCE = {"CONFIRMED": 0.85, "UNCERTAIN": 0.50, "REJECT": 0.20}
+                for v in challenge.entity_verdicts:
+                    if v.name:
+                        confidence_map[v.name] = VERDICT_CONFIDENCE.get(v.verdict, 0.50)
+
+            # Reconcile verdicts override challenge (higher authority)
+            for v in reconcile.verdicts:
+                if v.name and v.confidence > 0:
+                    confidence_map[v.name] = v.confidence
+
             for entity_dict in extraction.entities:
                 name = entity_dict.get("name", "")
                 if not name:
@@ -140,7 +159,7 @@ class PerceptionEngine:
                         description=entity_dict.get("description"),
                         aliases=entity_dict.get("aliases", []),
                         provenance=[document.id],
-                        confidence=0.5,
+                        confidence=confidence_map.get(name, skip_default),
                     )
                     self._graph.add_entity(entity)
                     self._store.upsert_entity(entity)
