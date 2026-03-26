@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import './styles/neural.css'
 import { NavBar } from './components/NavBar'
 import { wsManager } from './api/websocket'
-import { api } from './api/client'
 import { useGraph } from './hooks/useGraph'
 import { ForceGraph } from './components/graph/ForceGraph'
 import { NodeInspector } from './components/graph/NodeInspector'
@@ -38,43 +37,6 @@ export default function App() {
   )
 }
 
-function CoverageBar() {
-  const [coverage, setCoverage] = useState<any>(null)
-  useEffect(() => {
-    api.coverage().then(setCoverage).catch(() => {})
-  }, [])
-  if (!coverage) return null
-  const pct = coverage.coverage_pct || 0
-  const barColor = pct > 70 ? 'var(--accent-green)' : pct > 30 ? 'var(--accent-blue)' : 'var(--accent-orange)'
-  return (
-    <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
-          Knowledge Coverage
-        </span>
-        <span style={{ fontSize: 11, color: barColor, fontWeight: 600 }}>
-          {pct}%
-        </span>
-      </div>
-      <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-        <div style={{
-          height: '100%', width: `${pct}%`, background: barColor,
-          boxShadow: `0 0 8px ${barColor}88`, borderRadius: 2,
-          transition: 'width 0.8s ease',
-        }} />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-        <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>
-          {coverage.ingested_sources} / {coverage.total_sources} sources
-        </span>
-        <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>
-          {coverage.entities} entities · {coverage.relationships} edges · {coverage.agents} agents
-        </span>
-      </div>
-    </div>
-  )
-}
-
 function GraphExplorerPage() {
   const graph = useGraph()
 
@@ -87,9 +49,7 @@ function GraphExplorerPage() {
         background: 'var(--bg-primary)',
       }}
     >
-      {/* Left: filters sidebar with coverage bar on top */}
-      <div style={{ display: 'flex', flexDirection: 'column', width: 250, flexShrink: 0 }}>
-        <CoverageBar />
+      {/* Left: filters sidebar */}
       <GraphFilters
         nodes={graph.nodes}
         searchTerm={graph.searchTerm}
@@ -99,7 +59,6 @@ function GraphExplorerPage() {
         confidenceRange={graph.confidenceRange}
         setConfidenceRange={graph.setConfidenceRange}
       />
-      </div>
 
       {/* Center: force graph */}
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>

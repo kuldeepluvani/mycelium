@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { getEntityColor } from '../../utils/colors'
+import { api } from '../../api/client'
 import type { GraphNode } from '../../hooks/useGraph'
 
 interface GraphFiltersProps {
@@ -99,6 +100,9 @@ export function GraphFilters({
               boxSizing: 'border-box',
             }}
           />
+
+          {/* Knowledge coverage */}
+          <CoverageBar />
 
           {/* Entity classes */}
           <div>
@@ -254,6 +258,35 @@ function RangeRow({
         }}
         style={{ flex: 1, accentColor: 'var(--accent-blue)', cursor: 'pointer' }}
       />
+    </div>
+  )
+}
+
+function CoverageBar() {
+  const [coverage, setCoverage] = useState<any>(null)
+  useEffect(() => {
+    api.coverage().then(setCoverage).catch(() => {})
+  }, [])
+  if (!coverage) return null
+  const pct = coverage.coverage_pct || 0
+  const barColor = pct > 70 ? 'var(--accent-green)' : pct > 30 ? 'var(--accent-blue)' : 'var(--accent-orange)'
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <SectionLabel>Coverage</SectionLabel>
+        <span style={{ fontSize: 11, color: barColor, fontWeight: 600 }}>{pct}%</span>
+      </div>
+      <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', width: `${pct}%`, background: barColor,
+          boxShadow: `0 0 8px ${barColor}88`, borderRadius: 2,
+          transition: 'width 0.8s ease',
+        }} />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+        <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{coverage.ingested_sources}/{coverage.total_sources} sources</span>
+        <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{coverage.entities} entities</span>
+      </div>
     </div>
   )
 }
