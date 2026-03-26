@@ -182,6 +182,24 @@ class BrainstemStore:
             for r in rows
         ]
 
+    def update_entity_confidence(self, entity_id: str, confidence: float) -> None:
+        """Update confidence for a single entity."""
+        assert self.conn is not None
+        self.conn.execute(
+            "UPDATE entities SET confidence = ? WHERE id = ?",
+            (confidence, entity_id),
+        )
+        self.conn.commit()
+
+    def update_relationship_confidence(self, rel_id: str, confidence: float) -> None:
+        """Update confidence for a single relationship."""
+        assert self.conn is not None
+        self.conn.execute(
+            "UPDATE relationships SET confidence = ? WHERE id = ?",
+            (confidence, rel_id),
+        )
+        self.conn.commit()
+
     # ── relationship CRUD ────────────────────────────────────────────────
 
     def upsert_relationship(self, rel: Relationship) -> None:

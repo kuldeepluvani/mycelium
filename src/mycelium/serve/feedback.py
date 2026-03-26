@@ -5,8 +5,13 @@ from datetime import datetime, timezone
 
 
 class FeedbackLoop:
-    def __init__(self, db_path: str | None = None):
-        self._conn = sqlite3.connect(db_path) if db_path else None
+    def __init__(self, db_path: str | None = None, store=None):
+        if store and store.conn:
+            self._conn = store.conn
+        elif db_path:
+            self._conn = sqlite3.connect(db_path)
+        else:
+            self._conn = None
 
     def record_acceptance(self, entity_ids: list[str] = None, relationship_ids: list[str] = None) -> int:
         """Record user accepted the answer. Returns number of adjustments queued."""
@@ -54,3 +59,36 @@ class FeedbackLoop:
         for fid in feedback_ids:
             self._conn.execute("UPDATE feedback_queue SET applied_at = ? WHERE id = ?", (now, fid))
         self._conn.commit()
+
+    def apply_pending(self, store, graph, decay_engine) -> int:
+        """Apply all pending feedback adjustments to store and graph. Returns count applied."""
+        pending = self.get_pending()
+        if not pending:
+            return 0
+
+        applied_ids = []
+        for fb in pending:
+            if fb["entity_id"]:
+                entity = graph.get_entity(fb["entity_id"])
+                if entity:
+                    if fb["adjustment"] > 0:
+                        new_conf = decay_engine.feedback_boost(entity.confidence)
+                    else:
+                        new_conf = decay_engine.feedback_penalty(entity.confidence)
+                    entity.confidence = new_conf
+                    store.update_entity_confidence(entity.id, new_conf)
+
+            if fb["relationship_id"]:
+                rel = graph.get_relationship(fb["relationship_id"])
+                if rel:
+                    if fb["adjustment"] > 0:
+                        new_conf = decay_engine.feedback_boost(rel.confidence)
+                    else:
+                        new_conf = decay_engine.feedback_penalty(rel.confidence)
+                    rel.confidence = new_conf
+                    store.update_relationship_confidence(rel.id, new_conf)
+
+            applied_ids.append(fb["id"])
+
+        self.mark_applied(applied_ids)
+        return len(applied_ids)

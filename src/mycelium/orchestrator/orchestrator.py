@@ -22,6 +22,7 @@ from mycelium.network.agent_manager import AgentManager
 from mycelium.network.spillover import SpilloverEngine
 from mycelium.network.agent import Agent
 from mycelium.observe.store import ObservationStore
+from mycelium.serve.feedback import FeedbackLoop
 
 
 class Orchestrator:
@@ -239,6 +240,25 @@ class Orchestrator:
             session.edges_created = stats.relationships_created
             session.documents_processed = [d.path for d in docs_to_process]
             session.spent = stats.total_call_cost
+
+        # Apply confidence decay to all entities
+        for eid in self.graph.all_entity_ids():
+            entity = self.graph.get_entity(eid)
+            if entity and not entity.quarantined and not entity.archived:
+                new_conf = self.decay.apply_decay(entity.confidence, "semantic")
+                entity.confidence = new_conf
+                self.store.update_entity_confidence(eid, new_conf)
+
+        # Apply confidence decay to all relationships
+        for rel in self.graph.all_relationships():
+            if not rel.quarantined and not rel.archived:
+                new_conf = self.decay.apply_decay(rel.confidence, rel.rel_category)
+                rel.confidence = new_conf
+                self.store.update_relationship_confidence(rel.id, new_conf)
+
+        # Apply pending user feedback (boosts/penalties)
+        feedback = FeedbackLoop(store=self.store)
+        applied = feedback.apply_pending(self.store, self.graph, self.decay)
 
         # Agent discovery (if graph big enough)
         if self.graph.node_count() >= self.config.network.min_graph_nodes_for_discovery:
