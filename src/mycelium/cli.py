@@ -87,7 +87,8 @@ def init():
 @click.option("--calls", default=50, help="Call budget for this learn cycle")
 @click.option("--quick", is_flag=True, help="Quick learn (20 calls)")
 @click.option("--deep", is_flag=True, help="Deep learn (100 calls)")
-def learn(calls: int, quick: bool, deep: bool):
+@click.option("--force", is_flag=True, help="Re-process all files regardless of content hash")
+def learn(calls: int, quick: bool, deep: bool, force: bool):
     """Run a learn cycle."""
     if quick:
         calls = 20
@@ -97,7 +98,7 @@ def learn(calls: int, quick: bool, deep: bool):
     console.print(f"Starting learn cycle with budget={calls}")
     orch = _load_orchestrator()
 
-    session = asyncio.run(orch.learn(budget=calls))
+    session = asyncio.run(orch.learn(budget=calls, force=force))
 
     console.print(f"\n[green]Learn cycle complete[/green]")
     console.print(f"  Documents: {len(session.documents_processed)}")

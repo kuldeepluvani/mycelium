@@ -197,7 +197,7 @@ class Orchestrator:
         for meta in self.agent_manager.get_meta_agents():
             self.store.upsert_meta_agent(meta)
 
-    async def learn(self, budget: int = 50) -> LearnSession:
+    async def learn(self, budget: int = 50, force: bool = False) -> LearnSession:
         """Run a learn cycle with the given call budget."""
         session = LearnSession(budget=budget)
         self.session_store.save(session)
@@ -210,7 +210,7 @@ class Orchestrator:
         all_changesets = []
         for connector in self.connector_registry.all():
             try:
-                changes = await connector.discover_changes(known_hashes=self.store)
+                changes = await connector.discover_changes(known_hashes=self.store, force=force)
                 all_changesets.extend(changes)
             except Exception as e:
                 session.documents_remaining.append(f"error:{connector.source_type()}:{e}")
