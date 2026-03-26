@@ -118,6 +118,9 @@ class Orchestrator:
                     if agent:
                         agent.parent_id = meta.id
 
+        # Ensure all entities have agent coverage
+        self.agent_manager.ensure_catchall(self.graph)
+
     def _rebuild_graph(self):
         """Rebuild NetworkX graph from SQLite."""
         rows = self.store.execute(
@@ -265,6 +268,9 @@ class Orchestrator:
             clusters = self.cluster_engine.detect(self.graph)
             new_agents = await self.agent_manager.process_clusters(clusters, self.graph)
             session.agents_discovered = len(new_agents)
+
+            # Ensure catch-all agent covers remaining orphan entities
+            self.agent_manager.ensure_catchall(self.graph)
 
             # Spillover
             if quota.can_spend(len(self.agent_manager.get_active())):

@@ -8,6 +8,8 @@ from mycelium.network.cluster import ClusterInfo
 from mycelium.network.hierarchy_builder import HierarchyBuilder
 from mycelium.network.meta_agent import MetaAgent
 
+CATCHALL_AGENT_NAME = "General Knowledge"
+
 AGENT_NAME_PROMPT = """These entities form a knowledge cluster:
 {entities}
 
@@ -183,6 +185,43 @@ class AgentManager:
             agent.pinned = False
             return True
         return False
+
+    def ensure_catchall(self, graph: KnowledgeGraph) -> None:
+        """Create or update a catch-all agent for entities not covered by any cluster agent."""
+        covered = set()
+        for agent in self._agents.values():
+            if agent.status != "retired":
+                covered.update(agent.node_ids)
+
+        all_ids = set(graph.all_entity_ids())
+        orphans = list(all_ids - covered)
+
+        if not orphans:
+            # Remove catch-all if no longer needed
+            for agent in list(self._agents.values()):
+                if agent.name == CATCHALL_AGENT_NAME and not agent.pinned:
+                    agent.status = "retired"
+            return
+
+        existing = None
+        for agent in self._agents.values():
+            if agent.name == CATCHALL_AGENT_NAME and agent.status != "retired":
+                existing = agent
+                break
+
+        if existing:
+            existing.node_ids = orphans
+        else:
+            catchall = Agent(
+                id=f"agent-catchall-{uuid4().hex[:8]}",
+                name=CATCHALL_AGENT_NAME,
+                domain="general",
+                description="Covers all entities not assigned to a specialist agent.",
+                seed_nodes=orphans[:10],
+                node_ids=orphans,
+                status="active",
+            )
+            self._agents[catchall.id] = catchall
 
     def retire(self, agent_id: str) -> bool:
         agent = self._agents.get(agent_id)
