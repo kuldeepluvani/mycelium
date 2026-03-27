@@ -18,6 +18,7 @@ from mycelium.orchestrator.priority import PriorityScorer
 from mycelium.orchestrator.session import SessionStore, LearnSession
 from mycelium.perception.engine import PerceptionEngine
 from mycelium.perception.entity_resolver import EntityResolver
+from mycelium.perception.relationship_builder import RelationshipBuilder
 from mycelium.network.cluster import ClusterEngine
 from mycelium.network.agent_manager import AgentManager
 from mycelium.network.spillover import SpilloverEngine
@@ -273,6 +274,16 @@ class Orchestrator:
         merge_pairs = resolver.batch_find_duplicates()
         for keep_id, remove_id in merge_pairs:
             resolver.merge_entities(keep_id, remove_id, store=self.store)
+
+        # Cross-document relationship enrichment
+        if quota.can_spend(5):
+            enricher = RelationshipBuilder(
+                self._llm, batch_size=self.config.perception.batch_size_relationships
+            )
+            new_edges = await enricher.enrich_cross_document(
+                self.graph, self.store, budget=3
+            )
+            session.edges_created += new_edges
 
         # Agent discovery (if graph big enough)
         if self.graph.node_count() >= self.config.network.min_graph_nodes_for_discovery:

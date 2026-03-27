@@ -93,3 +93,83 @@ class RelationshipBuilder:
                 all_relationships.append(rel)
 
         return BatchRelationshipResult(relationships=all_relationships, call_cost=total_cost)
+
+    async def enrich_cross_document(self, graph, store, budget: int = 10) -> int:
+        """Find and create relationships between entities from different documents.
+
+        Groups entities by provenance (document source), finds pairs that share
+        entity_class or domain but come from different documents, then uses the
+        LLM to discover relationships between them.
+
+        Returns number of new relationships created.
+        """
+        # Group entities by provenance (document source)
+        doc_entities: dict[str, list[str]] = {}
+        for eid in graph.all_entity_ids():
+            e = graph.get_entity(eid)
+            if e and e.provenance:
+                for doc_id in e.provenance:
+                    doc_entities.setdefault(doc_id, []).append(eid)
+
+        # Build set of existing edges to avoid duplicates
+        existing_edges: set[tuple[str, str]] = set()
+        for rel in graph.all_relationships():
+            existing_edges.add((rel.source_id, rel.target_id))
+            existing_edges.add((rel.target_id, rel.source_id))
+
+        # Find entity pairs sharing entity_class/domain but from different documents
+        candidates: list[tuple[str, str, str, str]] = []  # (name_a, name_b, id_a, id_b)
+        all_eids = graph.all_entity_ids()
+        for i, eid_a in enumerate(all_eids):
+            e_a = graph.get_entity(eid_a)
+            if not e_a:
+                continue
+            for eid_b in all_eids[i + 1:]:
+                if (eid_a, eid_b) in existing_edges:
+                    continue
+                e_b = graph.get_entity(eid_b)
+                if not e_b:
+                    continue
+                # Same class or same domain, different documents
+                if e_a.entity_class == e_b.entity_class or (
+                    e_a.domain and e_a.domain == e_b.domain
+                ):
+                    prov_a = set(e_a.provenance)
+                    prov_b = set(e_b.provenance)
+                    if not prov_a & prov_b:  # no shared documents
+                        candidates.append((e_a.name, e_b.name, eid_a, eid_b))
+
+        if not candidates:
+            return 0
+
+        # Take top candidates (limit by budget * batch_size)
+        candidates = candidates[: budget * self._batch_size]
+
+        new_count = 0
+        # Process in batches
+        for batch_start in range(0, len(candidates), self._batch_size):
+            batch = candidates[batch_start: batch_start + self._batch_size]
+            pairs = [(c[0], c[1]) for c in batch]
+            id_map = {(c[0], c[1]): (c[2], c[3]) for c in batch}
+
+            result = await self.build_batch(pairs, "cross-document")
+            for rel in result.relationships:
+                # build_batch uses names as source_id/target_id
+                key = (rel.source_id, rel.target_id)
+                ids = id_map.get(key)
+                if not ids:
+                    # Try reverse
+                    ids = id_map.get((rel.target_id, rel.source_id))
+                if ids and (ids[0], ids[1]) not in existing_edges:
+                    rel.source_id = ids[0]
+                    rel.target_id = ids[1]
+                    graph.add_relationship(rel)
+                    store.upsert_relationship(rel)
+                    existing_edges.add((ids[0], ids[1]))
+                    existing_edges.add((ids[1], ids[0]))
+                    new_count += 1
+
+            if batch_start + self._batch_size >= budget * self._batch_size:
+                break
+
+        return new_count
