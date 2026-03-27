@@ -56,23 +56,14 @@ class ParallelReasoner:
         return responses
 
     async def _reason_single(self, query: str, agent, graph: KnowledgeGraph) -> AgentResponse:
-        context_lines = []
-        for nid in agent.node_ids[:15]:
-            e = graph.get_entity(nid)
-            if e:
-                neighbors = graph.get_neighbors(nid)
-                neighbor_names = []
-                for neighbor_id in list(neighbors)[:5]:
-                    n = graph.get_entity(neighbor_id)
-                    if n:
-                        neighbor_names.append(n.name)
-                context_lines.append(f"- {e.name} ({e.entity_class}): connected to {', '.join(neighbor_names) or 'nothing'}")
+        from mycelium.serve.context_builder import build_agent_context
+        context = build_agent_context(graph, agent.node_ids, max_entities=30, max_neighbors=8)
 
         prompt = REASON_PROMPT.format(
             agent_name=agent.name,
             domain=agent.domain,
             query=query,
-            context="\n".join(context_lines) or "(no context)",
+            context=context or "(no context)",
         )
 
         resp = await self._llm.generate(prompt)
