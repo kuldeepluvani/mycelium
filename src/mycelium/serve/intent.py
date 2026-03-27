@@ -12,9 +12,11 @@ class QueryIntent:
 
 
 class IntentParser:
-    def __init__(self, graph: KnowledgeGraph, subgraph_hops: int = 3):
+    def __init__(self, graph: KnowledgeGraph, embeddings=None, subgraph_hops: int = 3, semantic_threshold: float = 0.6):
         self._graph = graph
+        self._embeddings = embeddings
         self._hops = subgraph_hops
+        self._semantic_threshold = semantic_threshold
 
     def parse(self, query: str) -> QueryIntent:
         query_lower = query.lower()
@@ -32,6 +34,17 @@ class IntentParser:
                 if alias.lower() in query_lower:
                     mentioned.append(eid)
                     break
+
+        # Semantic matching via embeddings when string matching finds few results
+        if self._embeddings and hasattr(self._embeddings, 'count') and self._embeddings.count > 0 and len(mentioned) < 3:
+            try:
+                results = self._embeddings.search(query, top_k=5)
+                for r in results:
+                    if r.score >= self._semantic_threshold and r.entity_id not in mentioned:
+                        if self._graph.has_entity(r.entity_id):
+                            mentioned.append(r.entity_id)
+            except Exception:
+                pass  # Embeddings not available or search failed
 
         # Classify query type
         query_type = self._classify(query_lower)

@@ -26,7 +26,7 @@ class QueryEngine:
 
     async def ask(self, query: str, mode: str = "auto") -> QueryResult:
         from mycelium.serve.intent import IntentParser
-        intent = IntentParser(self._orch.graph).parse(query)
+        intent = IntentParser(self._orch.graph, embeddings=self._orch.embeddings).parse(query)
         metas = self._orch.agent_manager.get_meta_agents()
 
         if metas and mode != "flat":

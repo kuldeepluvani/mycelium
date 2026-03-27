@@ -13,6 +13,7 @@ def mock_orch():
     orch.graph.get_entity = MagicMock(return_value=None)
     orch.graph.get_neighbors = MagicMock(return_value=set())
     orch.graph.subgraph_around = MagicMock(return_value=set())
+    orch.embeddings = None
     orch.agent_manager = MagicMock()
     orch.agent_manager.get_active = MagicMock(return_value=[])
     orch.agent_manager.get_meta_agents = MagicMock(return_value=[])
