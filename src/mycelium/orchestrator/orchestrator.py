@@ -167,9 +167,18 @@ class Orchestrator:
             self.agent_manager._agents[agent.id] = agent
 
     def _save_agents(self):
-        """Persist agents to SQLite."""
+        """Persist L1 agents and L2 meta-agents to SQLite.
+
+        Uses upsert — never deletes agents. Retired agents stay in DB
+        with status='retired' so they survive restarts. Only a new learn
+        cycle can retire or replace them.
+        """
         import json
+
+        # -- L1 agents: upsert all current agents --
+        current_ids = set()
         for agent in self.agent_manager.agents:
+            current_ids.add(agent.id)
             self.store.execute(
                 "INSERT OR REPLACE INTO agents "
                 "(id, name, domain, description, seed_nodes, status, "
@@ -182,21 +191,33 @@ class Orchestrator:
                  agent.last_active.isoformat() if agent.last_active else None,
                  int(agent.pinned)),
             )
-            # Save node membership
+            # Refresh node membership for this agent
             self.store.execute("DELETE FROM agent_nodes WHERE agent_id = ?", (agent.id,))
             for node_id in agent.node_ids:
                 self.store.execute(
                     "INSERT OR IGNORE INTO agent_nodes (agent_id, entity_id, cycle_assigned) VALUES (?, ?, 1)",
                     (agent.id, node_id),
                 )
-            self.store.conn.commit()
-
-        # Save L2 meta-agents — clear old ones first to prevent duplicates
-        self.store.execute("DELETE FROM meta_agent_children")
-        self.store.execute("DELETE FROM meta_agents")
         self.store.conn.commit()
+
+        # -- L2 meta-agents: upsert current, retire stale --
+        current_meta_ids = set()
         for meta in self.agent_manager.get_meta_agents():
+            current_meta_ids.add(meta.id)
             self.store.upsert_meta_agent(meta)
+
+        # Mark meta-agents no longer in the manager as inactive
+        # (they stay in DB for history but won't load on next restart)
+        existing_meta_rows = self.store.execute(
+            "SELECT id FROM meta_agents WHERE status = 'active'"
+        ).fetchall()
+        for row in existing_meta_rows:
+            if row[0] not in current_meta_ids:
+                self.store.execute(
+                    "UPDATE meta_agents SET status = 'retired' WHERE id = ?",
+                    (row[0],),
+                )
+        self.store.conn.commit()
 
     async def learn(self, budget: int = 50, force: bool = False) -> LearnSession:
         """Run a learn cycle with the given call budget."""

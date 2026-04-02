@@ -100,10 +100,22 @@ class AgentManager:
                     agent.status = "retired"
 
         # Build L2 hierarchy from active L1 agents
+        # Merge with existing meta-agents rather than replacing
         active_l1 = self.get_active()
         if len(active_l1) >= 2:
             metas = await self._hierarchy_builder.build(active_l1, graph)
-            self._meta_agents = {m.id: m for m in metas}
+            new_metas = {m.id: m for m in metas}
+            # Retire old metas whose children are all retired
+            for mid, meta in list(self._meta_agents.items()):
+                if mid not in new_metas:
+                    active_children = [
+                        c for c in meta.children
+                        if self.get(c.agent_id) and self.get(c.agent_id).status != "retired"
+                    ]
+                    if not active_children:
+                        meta.status = "retired"
+            # Merge: new metas take priority, keep retired for history
+            self._meta_agents.update(new_metas)
 
         return new_agents
 
